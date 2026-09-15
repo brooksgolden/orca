@@ -27,6 +27,7 @@ async function toggleRevealHidden(page: Page): Promise<void> {
   await page.locator(VIEW_MENU).click()
   await page.locator(REVEAL_HIDDEN).click()
   await page.keyboard.press('Escape')
+  await expect(page.locator(REVEAL_HIDDEN)).toBeHidden()
 }
 
 /** What the view menu says is hidden, read off the switch and closed again. */
@@ -34,6 +35,7 @@ async function readHiddenCountFromMenu(page: Page): Promise<string | null> {
   await page.locator(VIEW_MENU).click()
   const count = await page.locator(REVEAL_HIDDEN).getAttribute('data-count')
   await page.keyboard.press('Escape')
+  await expect(page.locator(REVEAL_HIDDEN)).toBeHidden()
   return count
 }
 
@@ -177,8 +179,12 @@ test.describe('session grid hide and reveal', () => {
       await session.close(second.app)
       secondApp = null
     } finally {
-      await firstApp?.close().catch(() => undefined)
-      await secondApp?.close().catch(() => undefined)
+      if (firstApp) {
+        await session.close(firstApp).catch(() => undefined)
+      }
+      if (secondApp) {
+        await session.close(secondApp).catch(() => undefined)
+      }
       await session.dispose().catch(() => undefined)
     }
   })

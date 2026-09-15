@@ -121,8 +121,12 @@ test.describe('session grid', () => {
       await session.close(second.app)
       secondApp = null
     } finally {
-      await firstApp?.close().catch(() => undefined)
-      await secondApp?.close().catch(() => undefined)
+      if (firstApp) {
+        await session.close(firstApp).catch(() => undefined)
+      }
+      if (secondApp) {
+        await session.close(secondApp).catch(() => undefined)
+      }
       await session.dispose().catch(() => undefined)
     }
   })

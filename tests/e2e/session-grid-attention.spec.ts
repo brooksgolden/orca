@@ -97,7 +97,7 @@ function readAttention(
 }
 
 test.describe('session grid attention', () => {
-  test('raises a pill for an offscreen turn, scrolls to it, and puts its notice out on click', async (// oxlint-disable-next-line no-empty-pattern -- Playwright's second fixture arg is testInfo; the first must be an object destructure to opt out of the default fixture set.
+  test('raises a pill for an offscreen turn, scrolls to it, and puts its notice out on click @headful', async (// oxlint-disable-next-line no-empty-pattern -- Playwright's second fixture arg is testInfo; the first must be an object destructure to opt out of the default fixture set.
   {}, testInfo) => {
     test.setTimeout(300_000)
     const repoPath = seededRepoPathOrSkip()
