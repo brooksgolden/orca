@@ -14,11 +14,14 @@ import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-m
 import { installPreviewTerminalRightClickPaste } from './preview-terminal-right-click-paste'
 import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/terminal-native-copy-gutter'
 import { isWindowsUserAgent } from '@/components/terminal-pane/pane-helpers'
+import { installPreviewTerminalDictation } from './preview-terminal-dictation'
 
 /** Cap on queued user-input signals; a burst beyond this is indistinguishable from a stuck key. */
 const MAX_PENDING_USER_INPUT_SIGNALS = 32
 
 export type PreviewInputInstallers = {
+  installDictationTarget: (container: HTMLElement, terminal: Terminal) => void
+  invalidateDictationTarget: () => void
   /** Bind the paste gestures that live on the container and outlive any one terminal. */
   installContainerClipboard: (container: HTMLElement) => void
   /** Bind a freshly opened terminal. Safe to call once per terminal instance. */
@@ -45,6 +48,11 @@ export function createPreviewInputInstallers(args: {
   let disposeTerminalCompatibility: (() => void) | null = null
   let userInputDisposable: { dispose: () => void } | null = null
   let disposeContainerClipboard: (() => void) | null = null
+  let disposeDictation: (() => void) | null = null
+  const invalidateDictationTarget = (): void => {
+    disposeDictation?.()
+    disposeDictation = null
+  }
 
   const installCompatibility = (terminal: Terminal): void => {
     disposeTerminalCompatibility = installPreviewTerminalCompatibility(terminal, {
@@ -100,6 +108,16 @@ export function createPreviewInputInstallers(args: {
   }
 
   return {
+    invalidateDictationTarget,
+    installDictationTarget: (container, terminal) => {
+      invalidateDictationTarget()
+      disposeDictation = installPreviewTerminalDictation({
+        ptyId: args.ptyId,
+        container,
+        terminal,
+        getTerminalInput: args.getTerminalInput
+      })
+    },
     installContainerClipboard: (container) => {
       const disposeAppMenu = installPreviewTerminalAppMenuClipboard({
         container,
@@ -127,6 +145,7 @@ export function createPreviewInputInstallers(args: {
       installKeyHandler(terminal)
     },
     dispose: () => {
+      invalidateDictationTarget()
       disposeContainerClipboard?.()
       disposeContainerClipboard = null
       userInputDisposable?.dispose()

@@ -3,6 +3,7 @@ import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import {
   executeTerminalPastePlan,
   planTerminalPasteWithYield,
+  type TerminalPasteSource,
   type TerminalPasteTextOptions
 } from '@/components/terminal-pane/terminal-paste-coordinator'
 import { resolveTerminalPasteRuntime } from '@/components/terminal-pane/terminal-paste-runtime'
@@ -42,40 +43,13 @@ export function createPreviewClipboardPaster(deps: {
       return
     }
     const terminalInput = deps.getTerminalInput()
-    const pasteText = async (
-      text: string,
-      options?: TerminalPasteTextOptions
-    ): Promise<boolean> => {
-      if (!text || !targetIsCurrent()) {
-        return false
-      }
-      const platform = terminalInput?.hostPlatform ?? getShortcutPlatform()
-      const plan = await planTerminalPasteWithYield({
-        text,
-        source,
-        target: {
-          kind: 'terminal',
-          paneId: 0,
-          leafId: deps.ptyId,
-          ptyId: deps.ptyId,
-          runtime: resolveTerminalPasteRuntime({ platform, ptyId: deps.ptyId })
-        },
-        forceBracketedPaste: options?.forceBracketedPaste,
-        forceBracketedPasteForMultiline: terminalInput?.forceBracketedMultilineTextPaste,
-        windowsInputRecordNewline: terminalInput?.windowsInputRecordPasteNewline,
-        terminalBracketedPasteMode: pasteTerminal.modes.bracketedPasteMode
-      })
-      const execution = await executeTerminalPastePlan(plan, {
-        // Why: stream large pastes so the renderer never emits one huge IPC payload.
-        pasteText: (chunk, chunkOptions) => pasteTerminalText(pasteTerminal, chunk, chunkOptions),
-        writePty: (data) => window.api.terminalPreview.input(deps.ptyId, data),
-        isTargetCurrent: targetIsCurrent,
-        // Why: if focus changes mid-bracketed paste, the closing marker must still reach the live PTY.
-        canContinue: () => true
-      })
-      // The preview renders with the DOM renderer, so the image path's WebGL atlas recovery has nothing to do.
-      return execution.status === 'pasted'
-    }
+    const pasteText = createPreviewTextPaster({
+      ptyId: deps.ptyId,
+      terminal: pasteTerminal,
+      terminalInput,
+      source,
+      isTargetCurrent: targetIsCurrent
+    })
     await pasteTerminalClipboard({
       readClipboardText: (options) => window.api.ui.readClipboardText(options),
       saveClipboardImageAsTempFile: (args) => window.api.ui.saveClipboardImageAsTempFile(args),
@@ -83,5 +57,49 @@ export function createPreviewClipboardPaster(deps: {
       runtimeEnvironmentId: terminalInput?.runtimeEnvironmentId ?? null,
       pasteText
     })
+  }
+}
+
+export function createPreviewTextPaster(deps: {
+  ptyId: string
+  terminal: Terminal
+  terminalInput: DashboardCardTerminalInput | null
+  source: TerminalPasteSource
+  isTargetCurrent: () => boolean
+}): (text: string, options?: TerminalPasteTextOptions) => Promise<boolean> {
+  return async (text: string, options?: TerminalPasteTextOptions): Promise<boolean> => {
+    if (!text || !deps.isTargetCurrent()) {
+      return false
+    }
+    const platform = deps.terminalInput?.hostPlatform ?? getShortcutPlatform()
+    const plan = await planTerminalPasteWithYield({
+      text,
+      source: deps.source,
+      target: {
+        kind: 'terminal',
+        paneId: 0,
+        leafId: deps.ptyId,
+        ptyId: deps.ptyId,
+        runtime: resolveTerminalPasteRuntime({
+          platform,
+          ptyId: deps.ptyId,
+          connectionId: deps.terminalInput?.connectionId
+        })
+      },
+      forceBracketedPaste: options?.forceBracketedPaste,
+      forceBracketedPasteForMultiline: deps.terminalInput?.forceBracketedMultilineTextPaste,
+      windowsInputRecordNewline: deps.terminalInput?.windowsInputRecordPasteNewline,
+      terminalBracketedPasteMode: deps.terminal.modes.bracketedPasteMode
+    })
+    const execution = await executeTerminalPastePlan(plan, {
+      // Why: stream large pastes so the renderer never emits one huge IPC payload.
+      pasteText: (chunk, chunkOptions) => pasteTerminalText(deps.terminal, chunk, chunkOptions),
+      writePty: (data) => window.api.terminalPreview.input(deps.ptyId, data),
+      isTargetCurrent: deps.isTargetCurrent,
+      // Why: if focus changes mid-bracketed paste, the closing marker must still reach the live PTY.
+      canContinue: () => true
+    })
+    // The preview renders with the DOM renderer, so the image path's WebGL atlas recovery has nothing to do.
+    return execution.status === 'pasted'
   }
 }

@@ -282,6 +282,7 @@ export function AgentTerminalPreview({
         kittyKeyboardModes,
         write: (chunk, live) => writeReplayed(chunk, undefined, live)
       })
+      inputInstallers.installDictationTarget(container, terminal)
       for (const payload of pendingLivePayloads.splice(0)) {
         writeLive(payload)
       }
@@ -358,6 +359,7 @@ export function AgentTerminalPreview({
         return
       }
       refreshInFlight = true
+      inputInstallers.invalidateDictationTarget()
       const connection = await window.api.terminalPreview
         .connect(ptyId, {
           scrollbackRows: PREVIEW_SCROLLBACK_ROWS,
