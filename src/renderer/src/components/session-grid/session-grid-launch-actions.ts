@@ -1,6 +1,24 @@
 import { useAppStore } from '@/store'
 import { requestBackgroundTerminalWorktreeMount } from '@/components/terminal/background-terminal-worktree-mount'
 import type { ExecutionHostId } from '../../../../shared/execution-host'
+import { activateAndRevealWorkspace } from '@/lib/worktree-activation'
+import { activateStructuredAgentSessionById } from '@/lib/structured-agent-session-tab-activation'
+
+export function revealSessionGridChat(
+  worktreeId: string,
+  executionHostId: ExecutionHostId,
+  sessionId: string
+): boolean {
+  if (
+    activateAndRevealWorkspace(worktreeId, { executionHostId, providesInitialSurface: true }) ===
+    false
+  ) {
+    return false
+  }
+  // A later session snapshot consumes the launch focus intent if the tab has not arrived yet.
+  activateStructuredAgentSessionById({ worktreeId, sessionId })
+  return true
+}
 
 /**
  * Mount a session the grid just created without activating its workspace, so

@@ -30,6 +30,8 @@ export type QuickLaunchAgentMenuItemsProps = {
   /** Called with the new tab id once it exists. The tab bar focuses it, the
    *  session grid mounts it in the background — this component owns neither. */
   onLaunched: (tabId: string) => void
+  /** A native chat has no terminal tab id; the launch surface owns its navigation. */
+  onStructuredLaunched?: (sessionId: string) => void
   /** Optional initial prompt forwarded to `launchAgentInNewTab`. When set,
    *  the picked agent boots with this prompt — argv/flag agents auto-submit,
    *  followup-path agents land it as a draft for the user to confirm. */
@@ -144,6 +146,7 @@ export function useQuickLaunchAgents({
   executionHostId,
   groupId,
   onLaunched,
+  onStructuredLaunched,
   prompt,
   promptDelivery,
   launchSource,
@@ -201,6 +204,15 @@ export function useQuickLaunchAgents({
         return
       }
       if (!result.tabId) {
+        if (result.structuredSettlement && onStructuredLaunched) {
+          void result.structuredSettlement.then((settlement) => {
+            if (settlement.kind === 'structured' || settlement.kind === 'visibility-unknown') {
+              onStructuredLaunched(settlement.sessionId)
+            } else if (settlement.kind === 'refused-then-legacy' && settlement.primaryTabId) {
+              onLaunched(settlement.primaryTabId)
+            }
+          })
+        }
         // Why: paired web clients create the tab on the host; focus follows the
         // next session-tabs snapshot instead of a local tab id.
         return
@@ -237,6 +249,7 @@ export function useQuickLaunchAgents({
       executionHostId,
       groupId,
       onLaunched,
+      onStructuredLaunched,
       prompt,
       promptDelivery,
       launchSource,

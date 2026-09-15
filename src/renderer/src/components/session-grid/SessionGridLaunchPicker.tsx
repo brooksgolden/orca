@@ -28,7 +28,8 @@ import {
 } from './session-grid-worktree-catalog'
 import {
   launchSessionGridTab,
-  mountSessionGridLaunchInBackground
+  mountSessionGridLaunchInBackground,
+  revealSessionGridChat
 } from './session-grid-launch-actions'
 import { translate } from '@/i18n/i18n'
 
@@ -283,6 +284,11 @@ export function SessionGridLaunchTargetList({
     worktreeId: entry.worktreeId,
     executionHostId: entry.executionHostId,
     onLaunched,
+    onStructuredLaunched: (sessionId) => {
+      if (revealSessionGridChat(entry.worktreeId, entry.executionHostId, sessionId)) {
+        onDone()
+      }
+    },
     launchSource: 'session_grid',
     activate: false
   })
