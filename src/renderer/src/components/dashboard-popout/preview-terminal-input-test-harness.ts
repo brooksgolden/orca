@@ -1,5 +1,9 @@
 import { vi } from 'vitest'
 
+vi.mock('./preview-terminal-links', () => ({
+  installPreviewTerminalLinks: () => vi.fn()
+}))
+
 type Mock = ReturnType<typeof vi.fn>
 type PreviewTestTerminal = {
   write: Mock

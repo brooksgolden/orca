@@ -280,13 +280,13 @@ export function AgentTerminalPreview({
         terminal.resize(grid.cols, grid.rows)
         terminal.reset()
       }
+      inputInstallers.installTargetInteractions(container, terminal)
       replayPreviewConnectionSnapshot({
         snapshot: snap,
         replay: connection.replay,
         kittyKeyboardModes,
         write: (chunk, live) => writeReplayed(chunk, undefined, live)
       })
-      inputInstallers.installTargetInteractions(container, terminal)
       for (const payload of pendingLivePayloads.splice(0)) {
         writeLive(payload)
       }

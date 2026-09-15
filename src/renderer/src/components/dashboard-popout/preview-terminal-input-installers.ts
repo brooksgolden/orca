@@ -17,6 +17,7 @@ import { isWindowsUserAgent } from '@/components/terminal-pane/pane-helpers'
 import { installPreviewTerminalDictation } from './preview-terminal-dictation'
 import { installPreviewTerminalFileDrop } from './preview-terminal-file-drop'
 import type { PreviewTerminalWorkspace } from './agent-terminal-preview-props'
+import { installPreviewTerminalLinks } from './preview-terminal-links'
 
 /** Cap on queued user-input signals; a burst beyond this is indistinguishable from a stuck key. */
 const MAX_PENDING_USER_INPUT_SIGNALS = 32
@@ -53,7 +54,10 @@ export function createPreviewInputInstallers(args: {
   let disposeContainerClipboard: (() => void) | null = null
   let disposeFileDrop: (() => void) | null = null
   let disposeDictation: (() => void) | null = null
+  let disposeLinks: (() => void) | null = null
   const invalidateTargetInteractions = (): void => {
+    disposeLinks?.()
+    disposeLinks = null
     disposeFileDrop?.()
     disposeFileDrop = null
     disposeDictation?.()
@@ -118,22 +122,24 @@ export function createPreviewInputInstallers(args: {
     installTargetInteractions: (container, terminal) => {
       invalidateTargetInteractions()
       const workspace = args.getWorkspace?.()
+      const isCurrent = (): boolean => {
+        const current = args.getWorkspace?.()
+        return (
+          current?.worktreeId === workspace?.worktreeId &&
+          current?.tabId === workspace?.tabId &&
+          current?.paneKey === workspace?.paneKey &&
+          current?.cwd === workspace?.cwd &&
+          current?.executionHostId === workspace?.executionHostId
+        )
+      }
+      disposeLinks = installPreviewTerminalLinks(terminal, { container, workspace, isCurrent })
       if (workspace) {
         disposeFileDrop = installPreviewTerminalFileDrop({
           ptyId: args.ptyId,
           container: container.parentElement ?? container,
           terminal,
           workspace,
-          isCurrent: () => {
-            const current = args.getWorkspace?.()
-            return (
-              current?.worktreeId === workspace.worktreeId &&
-              current.tabId === workspace.tabId &&
-              current.paneKey === workspace.paneKey &&
-              current.cwd === workspace.cwd &&
-              current.executionHostId === workspace.executionHostId
-            )
-          }
+          isCurrent
         })
       }
       disposeDictation = installPreviewTerminalDictation({
