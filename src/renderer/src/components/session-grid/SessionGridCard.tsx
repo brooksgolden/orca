@@ -320,6 +320,7 @@ export function SessionGridCard({
         ) : item.ptyId && previewMounted && !restoring ? (
           <AgentTerminalPreview
             ptyId={item.ptyId}
+            workspace={item}
             terminalInput={terminalInput}
             fontSize={effectiveFontSize}
             fitAxis="both"

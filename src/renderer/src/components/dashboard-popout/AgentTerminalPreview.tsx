@@ -11,12 +11,12 @@ import {
   usePreviewTerminalTheme
 } from './use-preview-terminal-appearance-sync'
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
-import { cn } from '@/lib/utils'
+import { PreviewTerminalSurface } from './PreviewTerminalSurface'
 import { useAppStore } from '@/store'
 import { createPreviewGridClaim } from './preview-grid-claim'
 import { createPreviewBoxFit } from './preview-terminal-box-fit'
 import { createPreviewInputInstallers } from './preview-terminal-input-installers'
-import { PreviewPhaseOverlay, type PreviewPhase } from './preview-terminal-phase-overlay'
+import type { PreviewPhase } from './preview-terminal-phase-overlay'
 import { cancelPreviewDetach, queuePreviewDetach } from './preview-detach-batch'
 import { createPreviewSnapshotUnavailableRetry } from './preview-snapshot-unavailable-retry'
 import { previewSnapshotGrid } from './preview-snapshot-grid'
@@ -54,6 +54,7 @@ const nextSurfaceId = (): string => `preview-surface-${++surfaceCounter}`
  */
 export function AgentTerminalPreview({
   ptyId,
+  workspace,
   terminalInput = null,
   fontSize,
   fitAxis,
@@ -72,6 +73,7 @@ export function AgentTerminalPreview({
   // terminal (a remount reconnects the pty and repaints from a new snapshot).
   const settingsRef = useRef(settings)
   const macOptionAsAltRef = useRef(macOptionAsAlt)
+  const workspaceRef = useRef(workspace)
   const terminalInputRef = useRef(terminalInput)
   const fontSizeRef = useRef(fontSize)
   const autoFocusRef = useRef(autoFocus)
@@ -93,11 +95,12 @@ export function AgentTerminalPreview({
   useLayoutEffect(() => {
     settingsRef.current = settings
     macOptionAsAltRef.current = macOptionAsAlt
+    workspaceRef.current = workspace
     terminalInputRef.current = terminalInput
     fontSizeRef.current = fontSize
     autoFocusRef.current = autoFocus
     onPtyGoneRef.current = onPtyGone
-  }, [settings, macOptionAsAlt, terminalInput, fontSize, autoFocus, onPtyGone])
+  }, [settings, macOptionAsAlt, terminalInput, workspace, fontSize, autoFocus, onPtyGone])
 
   useEffect(() => {
     setPtyGone(false)
@@ -230,6 +233,7 @@ export function AgentTerminalPreview({
       getSettings: () => settingsRef.current ?? null,
       getMacOptionAsAlt: () => macOptionAsAltRef.current,
       getTerminalInput: () => terminalInputRef.current,
+      getWorkspace: () => workspaceRef.current,
       getReplayDepth: () => replayDepth
     })
 
@@ -282,7 +286,7 @@ export function AgentTerminalPreview({
         kittyKeyboardModes,
         write: (chunk, live) => writeReplayed(chunk, undefined, live)
       })
-      inputInstallers.installDictationTarget(container, terminal)
+      inputInstallers.installTargetInteractions(container, terminal)
       for (const payload of pendingLivePayloads.splice(0)) {
         writeLive(payload)
       }
@@ -359,7 +363,7 @@ export function AgentTerminalPreview({
         return
       }
       refreshInFlight = true
-      inputInstallers.invalidateDictationTarget()
+      inputInstallers.invalidateTargetInteractions()
       const connection = await window.api.terminalPreview
         .connect(ptyId, {
           scrollbackRows: PREVIEW_SCROLLBACK_ROWS,
@@ -455,29 +459,14 @@ export function AgentTerminalPreview({
   })
 
   return (
-    // Why: a size FIXED by the viewport (not shrink-to-fit) + overflow-hidden
-    // keeps the dialog stable no matter how wide/tall the pane's serialized
-    // buffer is. The terminal keeps the pane's true dimensions and is scaled/
-    // clipped to fit; createPreviewBoxFit anchors the end that shows the cursor.
-    <div
-      className={cn(
-        'relative h-[calc(100vh-140px)] w-full overflow-hidden bg-background p-1.5',
-        className
-      )}
-      style={terminalTheme?.background ? { backgroundColor: terminalTheme.background } : undefined}
-    >
-      <PreviewPhaseOverlay
-        phase={phase}
-        ptyId={ptyId}
-        ptyGone={ptyGone}
-        background={terminalTheme?.background}
-      />
-      <div
-        aria-hidden={ptyGone || undefined}
-        className={cn('flex h-full w-full items-end overflow-hidden', ptyGone && 'invisible')}
-      >
-        <div ref={containerRef} className="origin-bottom-left" />
-      </div>
-    </div>
+    <PreviewTerminalSurface
+      containerRef={containerRef}
+      className={className}
+      background={terminalTheme?.background}
+      phase={phase}
+      ptyId={ptyId}
+      ptyGone={ptyGone}
+      hasWorkspace={Boolean(workspace)}
+    />
   )
 }

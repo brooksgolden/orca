@@ -18036,6 +18036,9 @@
       "label": "Wheel over terminals",
       "focus": "According to focus",
       "focusHint": "Scrolls the focused terminal; otherwise the grid. {{shift}} + wheel reverses the target."
+    },
+    "drop": {
+      "differentHost": "Files from another remote host cannot be dropped here."
     }
   }
 }

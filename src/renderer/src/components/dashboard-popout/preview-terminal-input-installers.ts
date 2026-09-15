@@ -15,13 +15,15 @@ import { installPreviewTerminalRightClickPaste } from './preview-terminal-right-
 import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/terminal-native-copy-gutter'
 import { isWindowsUserAgent } from '@/components/terminal-pane/pane-helpers'
 import { installPreviewTerminalDictation } from './preview-terminal-dictation'
+import { installPreviewTerminalFileDrop } from './preview-terminal-file-drop'
+import type { PreviewTerminalWorkspace } from './agent-terminal-preview-props'
 
 /** Cap on queued user-input signals; a burst beyond this is indistinguishable from a stuck key. */
 const MAX_PENDING_USER_INPUT_SIGNALS = 32
 
 export type PreviewInputInstallers = {
-  installDictationTarget: (container: HTMLElement, terminal: Terminal) => void
-  invalidateDictationTarget: () => void
+  installTargetInteractions: (container: HTMLElement, terminal: Terminal) => void
+  invalidateTargetInteractions: () => void
   /** Bind the paste gestures that live on the container and outlive any one terminal. */
   installContainerClipboard: (container: HTMLElement) => void
   /** Bind a freshly opened terminal. Safe to call once per terminal instance. */
@@ -38,6 +40,7 @@ export function createPreviewInputInstallers(args: {
   pasteClipboardText: (activeElement: Element | null, source: PreviewTerminalPasteSource) => void
   getSettings: () => GlobalSettings | null
   getMacOptionAsAlt: () => MacOptionAsAlt
+  getWorkspace?: () => PreviewTerminalWorkspace | undefined
   getTerminalInput: () => DashboardCardTerminalInput | null
   /** Non-zero while replayed bytes are still being parsed; those must not echo back to the PTY. */
   getReplayDepth: () => number
@@ -48,8 +51,11 @@ export function createPreviewInputInstallers(args: {
   let disposeTerminalCompatibility: (() => void) | null = null
   let userInputDisposable: { dispose: () => void } | null = null
   let disposeContainerClipboard: (() => void) | null = null
+  let disposeFileDrop: (() => void) | null = null
   let disposeDictation: (() => void) | null = null
-  const invalidateDictationTarget = (): void => {
+  const invalidateTargetInteractions = (): void => {
+    disposeFileDrop?.()
+    disposeFileDrop = null
     disposeDictation?.()
     disposeDictation = null
   }
@@ -108,9 +114,28 @@ export function createPreviewInputInstallers(args: {
   }
 
   return {
-    invalidateDictationTarget,
-    installDictationTarget: (container, terminal) => {
-      invalidateDictationTarget()
+    invalidateTargetInteractions,
+    installTargetInteractions: (container, terminal) => {
+      invalidateTargetInteractions()
+      const workspace = args.getWorkspace?.()
+      if (workspace) {
+        disposeFileDrop = installPreviewTerminalFileDrop({
+          ptyId: args.ptyId,
+          container: container.parentElement ?? container,
+          terminal,
+          workspace,
+          isCurrent: () => {
+            const current = args.getWorkspace?.()
+            return (
+              current?.worktreeId === workspace.worktreeId &&
+              current.tabId === workspace.tabId &&
+              current.paneKey === workspace.paneKey &&
+              current.cwd === workspace.cwd &&
+              current.executionHostId === workspace.executionHostId
+            )
+          }
+        })
+      }
       disposeDictation = installPreviewTerminalDictation({
         ptyId: args.ptyId,
         container,
@@ -145,7 +170,7 @@ export function createPreviewInputInstallers(args: {
       installKeyHandler(terminal)
     },
     dispose: () => {
-      invalidateDictationTarget()
+      invalidateTargetInteractions()
       disposeContainerClipboard?.()
       disposeContainerClipboard = null
       userInputDisposable?.dispose()

@@ -15307,6 +15307,9 @@
       "reconnectTimedOut": "Se agotó el tiempo de reconexión",
       "load": "Cargar sesión",
       "notConnected": "Sesión sin conectar"
+    },
+    "drop": {
+      "differentHost": "No se pueden arrastrar aquí archivos de otro host remoto."
     }
   },
   "aiVault": {

@@ -1,8 +1,15 @@
 import type { DashboardCardTerminalInput } from '../../../../shared/dashboard-snapshot'
 import type { PreviewBoxFitAxis } from './preview-terminal-box-fit'
+import type { SessionGridItem } from '../../../../shared/session-grid-types'
+
+export type PreviewTerminalWorkspace = Pick<
+  SessionGridItem,
+  'worktreeId' | 'tabId' | 'paneKey' | 'cwd' | 'executionHostId'
+>
 
 export type AgentTerminalPreviewProps = {
   ptyId: string
+  workspace?: PreviewTerminalWorkspace
   /** Host-input facts relayed with the card; null routes bytes by client OS. */
   terminalInput?: DashboardCardTerminalInput | null
   /** Optional font size override (e.g. for grid session cards). */
