@@ -16,10 +16,9 @@ const ROW_STEP = 282 + 12
 let scrollToCalls: ScrollToOptions[] = []
 
 function stubReducedMotion(reduce: boolean): void {
-  vi.stubGlobal(
-    'matchMedia',
-    (query: string) => ({ matches: reduce && query.includes('prefers-reduced-motion') }) as never
-  )
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: reduce && query.includes('prefers-reduced-motion')
+  }))
 }
 
 function makeContainer(): HTMLDivElement {
@@ -32,13 +31,14 @@ function makeContainer(): HTMLDivElement {
       scrollTop = next
     }
   })
-  el.scrollTo = ((options: ScrollToOptions) => {
-    scrollToCalls.push(options)
-    el.scrollTop = options.top ?? 0
-  }) as HTMLDivElement['scrollTo']
-  el.scrollBy = ((options: ScrollToOptions) => {
-    el.scrollTop += options.top ?? 0
-  }) as HTMLDivElement['scrollBy']
+  el.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+    const next = typeof options === 'number' ? { left: options, top: y } : (options ?? {})
+    scrollToCalls.push(next)
+    el.scrollTop = next.top ?? 0
+  }
+  el.scrollBy = (options?: ScrollToOptions | number, y?: number) => {
+    el.scrollTop += typeof options === 'number' ? (y ?? 0) : (options?.top ?? 0)
+  }
   return el
 }
 
@@ -159,8 +159,11 @@ describe('useSessionGridScroll', () => {
     )
     const first = makeContainer()
     const second = makeContainer()
-    const view = renderHook(
-      ({ container }) => {
+    const view = renderHook<
+      ReturnType<typeof useSessionGridScroll>,
+      { container: HTMLDivElement | null }
+    >(
+      ({ container }: { container: HTMLDivElement | null }) => {
         const scroll = useSessionGridScroll({
           mode: 'row',
           rowsPerView: 2,
@@ -171,7 +174,7 @@ describe('useSessionGridScroll', () => {
         useLayoutEffect(() => setScrollContainer(container), [container, setScrollContainer])
         return scroll
       },
-      { initialProps: { container: first as HTMLDivElement | null } }
+      { initialProps: { container: first } }
     )
     wheel(first, 40)
     expect(view.result.current.currentPosition).toBe(1)
@@ -293,7 +296,7 @@ describe('useSessionGridScroll', () => {
     it('anchors the next gesture on the row already commanded, not the one still scrolling', () => {
       const { container, result } = mount('row')
       // A smooth scroll in flight: scrollTop still reads as row 0 after the first step.
-      container.scrollTo = (() => {}) as HTMLDivElement['scrollTo']
+      container.scrollTo = () => {}
       wheel(container, 40)
       expect(result.current.currentPosition).toBe(1)
       act(() => result.current.handleScroll())

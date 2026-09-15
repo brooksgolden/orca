@@ -1,4 +1,13 @@
 // @vitest-environment happy-dom
+import { makeProjectGroup } from '@/components/worktree-jump-palette-test-fixtures'
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import {
+  makeTerminalTab as makeGridTestTerminalTab,
+  makeFolderWorkspace as makeGridTestFolderWorkspace
+} from '@/store/slices/worktrees-slice-test-fixtures'
 
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,8 +19,6 @@ import SessionsGridPage from './SessionsGridPage'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import type { Repo } from '../../../../shared/repo-types'
-import type { FolderWorkspace } from '../../../../shared/folder-workspace-types'
-import type { ProjectGroup } from '../../../../shared/project-group-types'
 import { livePtyIdsFor } from './session-grid-test-live-ptys'
 
 // happy-dom lays nothing out, so the virtualizer would report an empty range.
@@ -71,17 +78,27 @@ function emptyState(): HTMLElement {
 function seedShells(count: number): void {
   const tabsByWorktree: Record<string, TerminalTab[]> = {
     'wt-1': Array.from({ length: count }, (_, i) => ({
+      customTitle: null,
+      color: null,
+      sortOrder: 0,
       id: `tab-${i}`,
       ptyId: `pty-${i}`,
       worktreeId: 'wt-1',
       title: `Session ${i}`,
       createdAt: i
-    })) as TerminalTab[]
+    }))
   }
   useAppStore.setState({
-    repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+    repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
     worktreesByRepo: {
-      'repo-1': [{ id: 'wt-1', displayName: 'sytio', branch: 'main' } as unknown as Worktree]
+      'repo-1': [
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-1',
+          displayName: 'sytio',
+          branch: 'main'
+        })
+      ]
     },
     tabsByWorktree,
     ptyIdsByTabId: livePtyIdsFor(tabsByWorktree)
@@ -154,13 +171,29 @@ describe('SessionsGridPage', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        { id: 'tab-1', ptyId: 'pty-stale', worktreeId: 'wt-1', title: 'Agent', createdAt: 100 }
-      ] as TerminalTab[]
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-1',
+          ptyId: 'pty-stale',
+          worktreeId: 'wt-1',
+          title: 'Agent',
+          createdAt: 100
+        })
+      ]
     }
     useAppStore.setState({
-      repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', displayName: 'sytio', branch: 'main' } as unknown as Worktree]
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            path: '',
+            id: 'wt-1',
+            displayName: 'sytio',
+            branch: 'main'
+          })
+        ]
       },
       tabsByWorktree,
       ptyIdsByTabId: livePtyIdsFor(tabsByWorktree)
@@ -257,10 +290,15 @@ describe('SessionsGridPage', () => {
   it('offers the workspace picker from the empty state when no workspace is active', () => {
     useAppStore.setState({
       activeWorktreeId: null,
-      repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
       worktreesByRepo: {
         'repo-1': [
-          { id: 'wt-1', displayName: 'sytio', branch: 'solidez/base' } as unknown as Worktree
+          makeGridTestWorktree('grid-fixture', '', {
+            path: '',
+            id: 'wt-1',
+            displayName: 'sytio',
+            branch: 'solidez/base'
+          })
         ]
       }
     })
@@ -280,7 +318,7 @@ describe('SessionsGridPage', () => {
   it('disables it for a repo group that holds no workspace, which the menu cannot offer', () => {
     useAppStore.setState({
       activeWorktreeId: null,
-      repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
       worktreesByRepo: { 'repo-1': [] }
     })
     render(<SessionsGridPage />)
@@ -293,14 +331,14 @@ describe('SessionsGridPage', () => {
       repos: [],
       worktreesByRepo: {},
       folderWorkspaces: [
-        {
+        makeGridTestFolderWorkspace({
           id: 'fw-1',
           projectGroupId: 'group-1',
           name: 'notes',
           folderPath: '/dev/notes'
-        } as unknown as FolderWorkspace
+        })
       ],
-      projectGroups: [{ id: 'group-1', name: 'Folders' } as unknown as ProjectGroup]
+      projectGroups: [makeProjectGroup({ id: 'group-1', name: 'Folders' })]
     })
     render(<SessionsGridPage />)
     expect(emptyStateLaunchButton()).toBeEnabled()
@@ -308,36 +346,50 @@ describe('SessionsGridPage', () => {
 
   it('renders session cards and empty slots for 2x2 grid when 3 sessions exist', () => {
     const repos: Repo[] = [
-      { id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo
+      makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })
     ]
     const worktreesByRepo: Record<string, Worktree[]> = {
       'repo-1': [
-        { id: 'wt-1', displayName: 'sytio', branch: 'solidez/base' } as unknown as Worktree
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-1',
+          displayName: 'sytio',
+          branch: 'solidez/base'
+        })
       ]
     }
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-1',
           ptyId: 'pty-1',
           worktreeId: 'wt-1',
           title: 'Base de conocimiento contrato 21%',
           createdAt: 100
-        } as TerminalTab,
-        {
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-2',
           ptyId: 'pty-2',
           worktreeId: 'wt-1',
           title: 'Session',
           createdAt: 200
-        } as TerminalTab,
-        {
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-3',
           ptyId: 'pty-3',
           worktreeId: 'wt-1',
           title: 'Term 3',
           createdAt: 300
-        } as TerminalTab
+        })
       ]
     }
 
@@ -407,20 +459,30 @@ describe('SessionsGridPage', () => {
     const PER_CARD_LISTENERS = 5
 
     const repos: Repo[] = [
-      { id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo
+      makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })
     ]
     const worktreesByRepo: Record<string, Worktree[]> = {
-      'repo-1': [{ id: 'wt-1', displayName: 'sytio', branch: 'main' } as unknown as Worktree]
+      'repo-1': [
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-1',
+          displayName: 'sytio',
+          branch: 'main'
+        })
+      ]
     }
     const renderCards = (count: number): void => {
       const tabsByWorktree: Record<string, TerminalTab[]> = {
         'wt-1': Array.from({ length: count }, (_, i) => ({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: `tab-${i}`,
           ptyId: `pty-${i}`,
           worktreeId: 'wt-1',
           title: `Session ${i}`,
           createdAt: i
-        })) as TerminalTab[]
+        }))
       }
       useAppStore.setState({
         repos,
@@ -460,14 +522,39 @@ describe('SessionsGridPage', () => {
   it('rings the bell on a card with an unread turn, and only on that card', () => {
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        { id: 'tab-1', ptyId: 'pty-1', worktreeId: 'wt-1', title: 'One', createdAt: 1 },
-        { id: 'tab-2', ptyId: 'pty-2', worktreeId: 'wt-1', title: 'Two', createdAt: 2 }
-      ] as TerminalTab[]
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-1',
+          ptyId: 'pty-1',
+          worktreeId: 'wt-1',
+          title: 'One',
+          createdAt: 1
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-2',
+          ptyId: 'pty-2',
+          worktreeId: 'wt-1',
+          title: 'Two',
+          createdAt: 2
+        })
+      ]
     }
     useAppStore.setState({
-      repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', displayName: 'sytio', branch: 'main' } as unknown as Worktree]
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            path: '',
+            id: 'wt-1',
+            displayName: 'sytio',
+            branch: 'main'
+          })
+        ]
       },
       tabsByWorktree,
       ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
@@ -480,27 +567,35 @@ describe('SessionsGridPage', () => {
     expect(cardAttentionBadge('tab-2')).toBe('none')
     // The glyph itself, not just the attribute: amber bell, not the agent-question orange.
     const bell = document.querySelector('[data-tab-id="tab-1"] [data-attention-badge] svg')
-    expect(bell?.getAttribute('class')).toContain('text-amber-500')
+    expect(bell?.getAttribute('class')).toContain('text-agent-unread')
   })
 
   it('navigates to tabs view and sets active tab when maximize is clicked', () => {
     const repos: Repo[] = [
-      { id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo
+      makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })
     ]
     const worktreesByRepo: Record<string, Worktree[]> = {
       'repo-1': [
-        { id: 'wt-1', displayName: 'sytio', branch: 'solidez/base' } as unknown as Worktree
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-1',
+          displayName: 'sytio',
+          branch: 'solidez/base'
+        })
       ]
     }
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-1',
           ptyId: 'pty-1',
           worktreeId: 'wt-1',
           title: 'Term 1',
           createdAt: 100
-        } as TerminalTab
+        })
       ]
     }
 

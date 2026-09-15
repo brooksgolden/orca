@@ -23,7 +23,7 @@ describe('host-gated UI fields', () => {
   })
 
   it('census: every value gate names a field some field gate already covers', () => {
-    const gatedFields = HOST_GATED_UI_FIELDS.flatMap((gate) => gate.fields as readonly string[])
+    const gatedFields = HOST_GATED_UI_FIELDS.flatMap((gate): readonly string[] => gate.fields)
     for (const gate of HOST_GATED_UI_VALUES) {
       expect(gatedFields).toContain(gate.field)
     }

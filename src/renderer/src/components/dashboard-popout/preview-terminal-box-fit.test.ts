@@ -4,17 +4,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPreviewBoxFit } from './preview-terminal-box-fit'
 import { buildPreviewFitHost, dimension } from './preview-fit-test-host'
 
-function terminalAt(rows: number, cursorY: number): never {
-  return { rows, buffer: { active: { cursorY } } } as never
+function terminalAt(
+  rows: number,
+  cursorY: number
+): { rows: number; buffer: { active: { cursorY: number } } } {
+  return { rows, buffer: { active: { cursorY } } }
 }
 
 describe('createPreviewBoxFit', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     // happy-dom has no rAF loop under fake timers; run callbacks as macrotasks.
-    vi.stubGlobal(
-      'requestAnimationFrame',
-      (cb: FrameRequestCallback) => setTimeout(() => cb(0), 16) as unknown as number
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      window.setTimeout(() => cb(0), 16)
     )
   })
 

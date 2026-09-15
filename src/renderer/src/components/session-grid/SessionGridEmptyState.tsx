@@ -80,11 +80,11 @@ export function SessionGridEmptyState({
         )}
       >
         <Button
-          size="sm"
+          size="xs"
           variant="outline"
           data-testid="session-grid-empty-reveal-hidden"
           onClick={onRevealHidden}
-          className="mt-2 gap-1.5 text-xs"
+          className="mt-2"
         >
           <Eye className="size-3.5" />
           {translate(
@@ -110,11 +110,11 @@ export function SessionGridEmptyState({
         )}
       >
         <Button
-          size="sm"
+          size="xs"
           variant="outline"
           data-testid="session-grid-empty-clear-filters"
           onClick={onClearFilters}
-          className="mt-2 gap-1.5 text-xs"
+          className="mt-2"
         >
           <SlidersHorizontal className="size-3.5" />
           {translate(
@@ -140,7 +140,7 @@ export function SessionGridEmptyState({
     >
       <Popover open={launchOpen} onOpenChange={setLaunchOpen}>
         <PopoverTrigger asChild>
-          <Button size="sm" disabled={!canLaunchFirst} className="mt-2 gap-1.5 text-xs">
+          <Button size="xs" disabled={!canLaunchFirst} className="mt-2">
             <Plus className="size-3.5" />
             {translate('auto.components.session.grid.SessionsGridPage.3b6b0870de', 'New session')}
           </Button>

@@ -1,3 +1,4 @@
+import { shallow } from 'zustand/vanilla/shallow'
 import type { SessionGridItem } from '../../../../shared/session-grid-types'
 // Type-only, so the pairing with the builder costs no runtime cycle.
 import type { SessionGridBucketCounts, SessionGridFilterOption } from './session-grid-items-builder'
@@ -58,11 +59,7 @@ export function reuseSessionGridItem(
   if (previous === undefined) {
     return next
   }
-  const keys = Object.keys(next) as (keyof SessionGridItem)[]
-  if (keys.length !== Object.keys(previous).length) {
-    return next
-  }
-  return keys.every((key) => Object.is(previous[key], next[key])) ? previous : next
+  return shallow(previous, next) ? previous : next
 }
 
 /** Swap in the previous array when nothing in the list changed identity. */
@@ -104,9 +101,7 @@ export function reuseSessionGridBucketCounts(
   next: SessionGridBucketCounts
 ): SessionGridBucketCounts {
   const previous = cache.previousStateCounts
-  const same = (Object.keys(next) as (keyof SessionGridBucketCounts)[]).every(
-    (bucket) => previous[bucket] === next[bucket]
-  )
+  const same = shallow(previous, next)
   cache.previousStateCounts = same ? previous : next
   return cache.previousStateCounts
 }

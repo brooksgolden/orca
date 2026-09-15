@@ -39,11 +39,13 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (write, ge
       return next
     }
     if (replace) {
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: replace=true selects Zustand’s complete AppState overload; update only adds a selection reset.
       write((state) => update(state) as AppState, true)
     } else {
       write(update, replace)
     }
   }
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: The existing UI factories initialize the complete slice but publish Partial<UISlice> contracts.
   return {
     ...createUiAgentActions(set, get),
     ...createUiTaskActions(set, get),

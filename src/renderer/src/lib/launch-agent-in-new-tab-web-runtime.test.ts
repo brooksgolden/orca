@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   setActiveTabType: vi.fn()
 }))
 
+const unifiedTabsByWorktree: Record<string, Tab[]> = {}
+
 const store = {
   activeRepoId: 'repo-1',
   activeWorktreeId: 'wt-1',
@@ -31,7 +33,7 @@ const store = {
     ]
   },
   tabsByWorktree: { 'wt-1': [{ id: 'tab-1' }] as { id: string; launchAgent?: string }[] },
-  unifiedTabsByWorktree: {} as Record<string, Tab[]>,
+  unifiedTabsByWorktree,
   openFiles: [] as { id: string; worktreeId: string }[],
   browserTabsByWorktree: {} as Record<string, { id: string }[]>,
   tabBarOrderByWorktree: {} as Record<string, string[]>,

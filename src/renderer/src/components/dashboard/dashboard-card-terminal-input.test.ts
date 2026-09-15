@@ -228,8 +228,18 @@ describe('resolveDashboardCardTerminalInput', () => {
 
   it('relays the SSH connection so an image paste lands on the pty host', () => {
     const state = stateWith({
-      repos: [{ id: 'repo-1', connectionId: 'conn-1', executionHostId: 'ssh:conn-1' }]
-    } as unknown as Partial<DashboardCardTerminalInputState>)
+      repos: [
+        {
+          id: 'repo-1',
+          connectionId: 'conn-1',
+          executionHostId: 'ssh:conn-1',
+          path: '/repo',
+          displayName: 'repo',
+          badgeColor: '',
+          addedAt: 0
+        }
+      ]
+    })
     expect(resolveDashboardCardTerminalInput(state, MAC_ARGS).connectionId).toBe('conn-1')
   })
 

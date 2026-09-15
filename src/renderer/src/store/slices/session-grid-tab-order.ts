@@ -3,7 +3,7 @@
 // tabs are authoritative. Stale ids are simply never read by the grid's index map.
 
 /** Drop duplicates, keeping the first occurrence. Returns the input when already clean. */
-export function sanitizeSessionGridTabOrder(order: readonly string[] | undefined): string[] {
+export function sanitizeSessionGridTabOrder(order: string[] | undefined): string[] {
   if (!order || order.length === 0) {
     return []
   }
@@ -18,14 +18,12 @@ export function sanitizeSessionGridTabOrder(order: readonly string[] | undefined
   // Returning the input when nothing was dropped is redundancy, not a guard: the only caller
   // (hydrateSessionGridState) re-checks identity against the STORE's array right after, and the
   // persisted writer never sees this output — it diffs by value in `stringArrayEqual`.
-  return clean.length === order.length ? (order as string[]) : clean
+  return clean.length === order.length ? order : clean
 }
 
 /** Remove one retired tab. Returns the input when the id was not present. */
-export function pruneSessionGridTabOrder(order: readonly string[], closedTabId: string): string[] {
-  return order.includes(closedTabId)
-    ? order.filter((id) => id !== closedTabId)
-    : (order as string[])
+export function pruneSessionGridTabOrder(order: string[], closedTabId: string): string[] {
+  return order.includes(closedTabId) ? order.filter((id) => id !== closedTabId) : order
 }
 
 /**

@@ -23,7 +23,7 @@ describe('createPreviewGridClaim', () => {
       ptyId: 'pty-1',
       surfaceId: 'surface-1',
       container,
-      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+      getTerminal: () => ({ cols: 80, rows: 24 })
     })
 
     claim.schedule()
@@ -52,7 +52,7 @@ describe('createPreviewGridClaim', () => {
       ptyId: 'pty-1',
       surfaceId: 'surface-1',
       container,
-      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+      getTerminal: () => ({ cols: 80, rows: 24 })
     })
 
     claim.schedule()
@@ -84,7 +84,7 @@ describe('createPreviewGridClaim', () => {
       ptyId: 'pty-1',
       surfaceId: 'surface-1',
       container,
-      getTerminal: () => ({ cols: 80, rows: 24 }) as never,
+      getTerminal: () => ({ cols: 80, rows: 24 }),
       onApplied: (grid) => applied.push(grid)
     })
 
@@ -115,7 +115,7 @@ describe('createPreviewGridClaim', () => {
       ptyId: 'pty-1',
       surfaceId: 'surface-1',
       container,
-      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+      getTerminal: () => ({ cols: 80, rows: 24 })
     })
 
     claim.schedule()
@@ -142,7 +142,7 @@ describe('createPreviewGridClaim', () => {
       ptyId: 'pty-1',
       surfaceId: 'surface-1',
       container,
-      getTerminal: () => grid as never
+      getTerminal: () => grid
     })
 
     claim.schedule()
@@ -185,7 +185,7 @@ describe('createPreviewGridClaim', () => {
       ptyId: 'pty-1',
       surfaceId: 'surface-1',
       container,
-      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+      getTerminal: () => ({ cols: 80, rows: 24 })
     })
 
     claim.schedule()
@@ -227,7 +227,7 @@ describe('createPreviewGridClaim', () => {
       ptyId: 'pty-1',
       surfaceId: 'surface-1',
       container,
-      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+      getTerminal: () => ({ cols: 80, rows: 24 })
     })
 
     claim.schedule()
@@ -255,7 +255,7 @@ describe('createPreviewGridClaim', () => {
       ptyId: 'pty-1',
       surfaceId: 'surface-1',
       container,
-      getTerminal: () => ({ cols: 80, rows: 24 }) as never
+      getTerminal: () => ({ cols: 80, rows: 24 })
     })
 
     claim.schedule()

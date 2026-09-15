@@ -50,12 +50,15 @@ function listenerCount(): number {
 
 function seedTabs(count: number): void {
   const tabs: TerminalTab[] = Array.from({ length: count }, (_, i) => ({
+    customTitle: null,
+    color: null,
+    sortOrder: 0,
     id: `tab-${i}`,
     ptyId: `pty-${i}`,
     worktreeId: 'wt-1',
     title: `Session ${i}`,
     createdAt: i
-  })) as TerminalTab[]
+  }))
   const tabsByWorktree = { 'wt-1': tabs }
   useAppStore.setState({
     repos: [],

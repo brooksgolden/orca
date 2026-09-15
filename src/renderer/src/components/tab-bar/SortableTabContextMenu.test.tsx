@@ -8,16 +8,22 @@ import { REQUEST_ACTIVE_TERMINAL_PANE_SPLIT_EVENT } from '@/constants/terminal'
 import { requestActiveTerminalPaneSplit } from './request-active-terminal-pane-split'
 import { SortableTabContextMenu } from './SortableTabContextMenu'
 
-const storeMock = vi.hoisted(() => ({
-  dropUnifiedTab: vi.fn(),
-  toggleSessionsGridHiddenTab: vi.fn(),
-  state: {
-    keybindings: {},
-    unifiedTabsByWorktree: {},
-    groupsByWorktree: {},
-    sessionsGridHiddenTabIds: [] as string[]
-  } as Record<string, unknown>
-}))
+const storeMock = vi.hoisted(
+  (): {
+    dropUnifiedTab: ReturnType<typeof vi.fn>
+    toggleSessionsGridHiddenTab: ReturnType<typeof vi.fn>
+    state: Record<string, unknown>
+  } => ({
+    dropUnifiedTab: vi.fn(),
+    toggleSessionsGridHiddenTab: vi.fn(),
+    state: {
+      keybindings: {},
+      unifiedTabsByWorktree: {},
+      groupsByWorktree: {},
+      sessionsGridHiddenTabIds: new Array<string>()
+    }
+  })
+)
 
 vi.mock('@/hooks/useShortcutLabel', () => ({
   formatShortcutLabel: () => '⌘D',

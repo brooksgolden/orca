@@ -412,7 +412,7 @@ describe('resolveAutoAckTabTargets', () => {
     activeWorktreeId: 'wt-1',
     activeSessionGridTabId: null,
     sessionsGridFilter: 'all' as const,
-    sessionsGridHiddenTabIds: [] as string[],
+    sessionsGridHiddenTabIds: new Array<string>(),
     activeTabIdByWorktree: {
       'wt-1': 'tab-1',
       [FLOATING_TERMINAL_WORKTREE_ID]: FLOATING_TAB_ID

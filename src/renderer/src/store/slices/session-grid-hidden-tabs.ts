@@ -7,9 +7,7 @@
 import { preserveStringArrayIdentity } from './ui/ui-slice-hydration-sanitizers'
 
 /** Drop non-strings and duplicates, keeping the first occurrence. Returns the input when already clean. */
-export function sanitizeSessionGridHiddenTabIds(
-  hiddenTabIds: readonly string[] | undefined
-): string[] {
+export function sanitizeSessionGridHiddenTabIds(hiddenTabIds: string[] | undefined): string[] {
   if (!hiddenTabIds || hiddenTabIds.length === 0) {
     return []
   }
@@ -24,24 +22,21 @@ export function sanitizeSessionGridHiddenTabIds(
   // Returning the input when nothing was dropped is redundancy, not a guard: the only caller
   // (hydrateSessionGridState) re-checks identity against the STORE's array right after, and the
   // persisted writer never sees this output — it diffs by value in `stringArrayEqual`.
-  return preserveStringArrayIdentity(hiddenTabIds as string[], clean) ?? clean
+  return preserveStringArrayIdentity(hiddenTabIds, clean) ?? clean
 }
 
 /** Remove one retired tab. Returns the input when the id was not present. */
 export function pruneSessionGridHiddenTabIds(
-  hiddenTabIds: readonly string[],
+  hiddenTabIds: string[],
   closedTabId: string
 ): string[] {
   return hiddenTabIds.includes(closedTabId)
     ? hiddenTabIds.filter((id) => id !== closedTabId)
-    : (hiddenTabIds as string[])
+    : hiddenTabIds
 }
 
 /** Flip one tab's grid visibility; every other hidden tab keeps its place. */
-export function toggleSessionGridHiddenTabId(
-  hiddenTabIds: readonly string[],
-  tabId: string
-): string[] {
+export function toggleSessionGridHiddenTabId(hiddenTabIds: string[], tabId: string): string[] {
   return hiddenTabIds.includes(tabId)
     ? hiddenTabIds.filter((id) => id !== tabId)
     : [...hiddenTabIds, tabId]

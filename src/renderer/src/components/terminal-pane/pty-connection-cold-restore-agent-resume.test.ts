@@ -183,7 +183,7 @@ describe('connectPanePty', () => {
           }
         }
       }
-    } as StoreState
+    }
 
     const pane = createPane(1)
     const manager = createManager(1)
@@ -277,7 +277,7 @@ describe('connectPanePty', () => {
           providerSession: { key: 'session_id', id: "codex-session-1's" }
         }
       }
-    } as StoreState
+    }
 
     const pane = createPane(1)
     const manager = createManager(1)
@@ -363,7 +363,7 @@ describe('connectPanePty', () => {
             updatedAt: 1
           }
         }
-      } as StoreState
+      }
 
       const pane = createPane(1)
       const manager = createManager(1)
@@ -453,7 +453,7 @@ describe('connectPanePty', () => {
           updatedAt: 1
         }
       }
-    } as StoreState
+    }
 
     const pane = createPane(1)
     const manager = createManager(1)
@@ -519,7 +519,7 @@ describe('connectPanePty', () => {
           updatedAt: 2
         }
       }
-    } as StoreState
+    }
 
     const pane = createPane(1)
     const manager = createManager(1)
@@ -599,7 +599,7 @@ describe('connectPanePty', () => {
           updatedAt: 2
         }
       }
-    } as StoreState
+    }
 
     const pane = createPane(1)
     const manager = createManager(1)

@@ -32,7 +32,7 @@ describe('keybindings', () => {
     expect(definition?.title).toBe('Toggle Session Grid')
     expect(definition?.group).toBe('Global')
     expect(definition?.allowInTerminal).toBe(true)
-    for (const platform of ['darwin', 'linux', 'win32'] as KeybindingPlatform[]) {
+    for (const platform of ['darwin', 'linux', 'win32'] as const) {
       expect(getEffectiveKeybindingsForAction('view.sessions.toggle', platform)).toEqual([])
     }
     // Mod+Shift+G belongs to Show Source Control and to the terminal's find-previous.
@@ -54,7 +54,7 @@ describe('keybindings', () => {
   })
 
   it('ships the session grid page keys bound bare, with Alt+Arrow as the secondary', () => {
-    for (const platform of ['darwin', 'linux', 'win32'] as KeybindingPlatform[]) {
+    for (const platform of ['darwin', 'linux', 'win32'] as const) {
       expect(getEffectiveKeybindingsForAction('sessions.grid.nextPage', platform)).toEqual([
         'PageDown',
         'Alt+ArrowDown'
@@ -280,7 +280,7 @@ describe('keybindings', () => {
 
   it('leaves floating workspace minimize unassigned because floating terminal toggle owns show and hide', () => {
     const platforms: readonly KeybindingPlatform[] = ['darwin', 'linux', 'win32']
-    const minimizeAction = 'floatingWorkspace.minimize' as KeybindingActionId
+    const minimizeAction: KeybindingActionId = 'floatingWorkspace.minimize'
 
     for (const platform of platforms) {
       expect(getEffectiveKeybindingsForAction(minimizeAction, platform)).toEqual([])

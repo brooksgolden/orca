@@ -16,16 +16,21 @@ import {
 } from '../store/slices/persisted-ui-write-baseline'
 import { usePersistedUIWriter } from './use-persisted-ui-writer'
 
-const storeRef = vi.hoisted(() => ({
-  current: null as unknown as StoreApi<unknown>
-}))
+const storeRef = vi.hoisted((): { current: StoreApi<AppState> | null } => ({ current: null }))
 
 vi.mock('../store', async () => {
   const { useStore } = await import('zustand')
-  const useAppStore = (selector: (s: unknown) => unknown) => useStore(storeRef.current, selector)
-  useAppStore.getState = () => storeRef.current.getState()
-  useAppStore.setState = (partial: never) => storeRef.current.setState(partial)
-  useAppStore.subscribe = (listener: never) => storeRef.current.subscribe(listener)
+  const getStore = (): StoreApi<AppState> => {
+    if (!storeRef.current) {
+      throw new Error('UI store fixture not initialized')
+    }
+    return storeRef.current
+  }
+  const useAppStore = (selector: (s: AppState) => unknown) => useStore(getStore(), selector)
+  useAppStore.getState = () => getStore().getState()
+  useAppStore.setState = (partial: Partial<AppState>) => getStore().setState(partial)
+  useAppStore.subscribe = (listener: (state: AppState, prev: AppState) => void) =>
+    getStore().subscribe(listener)
   return { useAppStore }
 })
 
@@ -85,11 +90,13 @@ describe('usePersistedUIWriter against a host that rejects unknown keys', () => 
     vi.useFakeTimers()
     host = createOldHost()
     store = createUIStore()
-    storeRef.current = store as unknown as typeof storeRef.current
+    storeRef.current = store
     // Hydration's own migration writes ride the fire-and-forget set; the writer uses setWithAck.
-    ;(window as unknown as { api: unknown }).api = {
-      ui: { set: () => Promise.resolve(), setWithAck: host.set }
+    const ui: Pick<typeof window.api.ui, 'set' | 'setWithAck'> = {
+      set: () => Promise.resolve(),
+      setWithAck: host.set
     }
+    vi.stubGlobal('api', { ui })
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
@@ -115,6 +122,7 @@ describe('usePersistedUIWriter against a host that rejects unknown keys', () => 
       root.unmount()
     })
     container.remove()
+    vi.unstubAllGlobals()
     vi.useRealTimers()
   })
 

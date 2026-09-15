@@ -34,7 +34,7 @@ export function TerminalTabAttentionBadgeGlyph({
   badge: TerminalTabAttentionBadge
 }): React.JSX.Element {
   return badge === 'unread' ? (
-    <FilledBellIcon className="size-2.5 text-amber-500 drop-shadow-sm" />
+    <FilledBellIcon className="size-2.5 text-agent-unread drop-shadow-sm" />
   ) : (
     <AgentStateDot state={badge} size="sm" title={null} />
   )

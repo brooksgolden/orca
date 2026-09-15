@@ -43,16 +43,20 @@ const EXPECTED_BUCKETS = {
   idle: 'idle'
 } satisfies Record<SessionGridDotState, Exclude<SessionGridStateFilter, 'all'>>
 
+const DOT_STATES = Object.keys(EXPECTED_BUCKETS).filter((state): state is SessionGridDotState =>
+  Object.hasOwn(EXPECTED_BUCKETS, state)
+)
+
 describe('sessionGridDotStateBucket', () => {
   it('buckets every dot state the grid can paint', () => {
-    for (const [dotState, bucket] of Object.entries(EXPECTED_BUCKETS)) {
-      expect(sessionGridDotStateBucket(dotState as SessionGridDotState)).toBe(bucket)
+    for (const dotState of DOT_STATES) {
+      expect(sessionGridDotStateBucket(dotState)).toBe(EXPECTED_BUCKETS[dotState])
     }
   })
 
   it('sends only permission to attention, matching the dashboard bucket', () => {
-    const attention = Object.keys(EXPECTED_BUCKETS).filter(
-      (dotState) => sessionGridDotStateBucket(dotState as SessionGridDotState) === 'attention'
+    const attention = DOT_STATES.filter(
+      (dotState) => sessionGridDotStateBucket(dotState) === 'attention'
     )
     expect(attention).toEqual(['permission'])
   })

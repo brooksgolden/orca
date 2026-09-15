@@ -77,7 +77,9 @@ const harness = {
     if (kind) {
       cards.find((card) => card.kind === kind)!.terminal.focus()
     } else {
-      ;(document.activeElement as HTMLElement | null)?.blur()
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
     }
   },
   viewport(kind: string, position: 'top' | 'middle' | 'bottom'): void {

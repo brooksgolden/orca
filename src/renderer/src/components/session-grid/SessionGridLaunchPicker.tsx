@@ -17,7 +17,6 @@ import { AgentIcon } from '@/lib/agent-catalog'
 import { useQuickLaunchAgents } from '@/components/tab-bar/QuickLaunchButton'
 import { cn } from '@/lib/utils'
 import { composeWorktreeHostIdentity } from '../../../../shared/worktree/host-qualified-identity'
-import type { ExecutionHostId } from '../../../../shared/execution-host'
 import type { SessionGridFilter } from '../../../../shared/session-grid-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import {
@@ -153,7 +152,7 @@ export function SessionGridLaunchPopoverContent({
       align={align}
       side="bottom"
       sideOffset={sideOffset}
-      className="w-72 p-0"
+      className="w-72"
       {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
       onOpenAutoFocus={(event) => {
         // Radix would focus the content wrapper; the search box (or the list) is the real target.
@@ -180,7 +179,7 @@ export function SessionGridLaunchPopoverContent({
               'auto.components.session.grid.SessionGridLaunchPicker.search',
               'Search workspaces…'
             )}
-            className="h-8 text-xs"
+            className="h-8"
           />
           <CommandList className="max-h-80">
             <CommandEmpty>
@@ -209,7 +208,6 @@ export function SessionGridLaunchPopoverContent({
                         data-testid="session-grid-launch-workspace"
                         data-execution-host={entry.executionHostId}
                         onSelect={() => setPicked(entry)}
-                        className="text-xs"
                       >
                         <span className="truncate font-medium">
                           {group.key === 'in-grid' && entry.worktreeName !== entry.repoName ? (
@@ -253,7 +251,7 @@ function placeholderEntry(worktreeId: string): SessionGridWorktreeEntry {
     path: '',
     label: name,
     hostKind: 'local',
-    executionHostId: 'local' as ExecutionHostId
+    executionHostId: 'local'
   }
 }
 
@@ -353,7 +351,7 @@ export function SessionGridLaunchTargetList({
       <CommandList>
         <CommandGroup>
           {launch.agents.length === 0 ? (
-            <CommandItem disabled value="no-agents" className="text-xs text-muted-foreground">
+            <CommandItem disabled value="no-agents">
               {emptyLabel}
             </CommandItem>
           ) : null}
@@ -368,15 +366,11 @@ export function SessionGridLaunchTargetList({
                 data-testid="session-grid-launch-agent"
                 data-agent={agent}
                 onSelect={() => launchAgent(agent)}
-                className="text-xs font-medium"
               >
                 <AgentIcon agent={agent} size={14} />
                 <span className="flex-1 truncate">{label}</span>
                 {isDefault ? (
-                  <Badge
-                    variant="outline"
-                    className="px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
-                  >
+                  <Badge variant="outline">
                     {translate(
                       'auto.components.session.grid.SessionGridLaunchPicker.default',
                       'Default'
@@ -396,7 +390,6 @@ export function SessionGridLaunchTargetList({
             value="terminal-shell"
             data-testid="session-grid-launch-shell"
             onSelect={launchShell}
-            className="text-xs"
           >
             <TerminalIcon className={cn('size-3.5 text-muted-foreground')} />
             {translate(
@@ -404,11 +397,7 @@ export function SessionGridLaunchTargetList({
               'Terminal Shell'
             )}
           </CommandItem>
-          <CommandItem
-            value="agent-settings"
-            onSelect={launch.openAgentSettings}
-            className="text-xs text-muted-foreground"
-          >
+          <CommandItem value="agent-settings" onSelect={launch.openAgentSettings}>
             <SettingsIcon className="size-3.5" />
             {translate(
               'auto.components.session.grid.SessionGridLaunchPicker.agentSettings',

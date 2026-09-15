@@ -40,7 +40,7 @@ export function createPreviewGridClaim(args: {
   ptyId: string
   surfaceId: string
   container: HTMLElement
-  getTerminal: () => Terminal | null
+  getTerminal: () => Pick<Terminal, 'cols' | 'rows'> | null
   /** Notified with the grid actually in effect, or null when the claim did not land. */
   onApplied?: (applied: PreviewGridSize | null) => void
 }): {

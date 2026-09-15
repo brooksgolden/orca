@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import { makeRepo, makeWorktree } from '@/components/worktree-jump-palette-test-fixtures'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
@@ -43,8 +44,8 @@ function item(overrides: Partial<SessionGridItem> = {}): SessionGridItem {
 describe('useSessionGridCardTerminalInput', () => {
   beforeEach(() => {
     useAppStore.setState({
-      repos: [{ id: 'repo-1', connectionId: null, executionHostId: 'local' }] as never,
-      worktreesByRepo: { 'repo-1': [{ id: 'wt-1', repoId: 'repo-1' }] } as never,
+      repos: [makeRepo({ id: 'repo-1', connectionId: null, executionHostId: 'local' })],
+      worktreesByRepo: { 'repo-1': [makeWorktree('wt-1', 'Worktree')] },
       paneForegroundAgentByPaneKey: {}
     })
   })
@@ -77,7 +78,7 @@ describe('useSessionGridCardTerminalInput', () => {
       useAppStore.setState({
         paneForegroundAgentByPaneKey: {
           [PANE_KEY]: { agent: 'droid', routingTrusted: true, shellForeground: false }
-        } as never
+        }
       })
     })
     expect(result.current).not.toBe(before)
@@ -95,8 +96,16 @@ describe('useSessionGridCardTerminalInput', () => {
       useAppStore.setState({
         agentStatusByPaneKey: {
           ...useAppStore.getState().agentStatusByPaneKey,
-          'another-tab:another-pane': { status: 'working', agent: 'claude' }
-        } as never
+          'another-tab:another-pane': {
+            state: 'working',
+            agentType: 'claude',
+            paneKey: 'another-tab:another-pane',
+            prompt: '',
+            updatedAt: 0,
+            stateStartedAt: 0,
+            stateHistory: []
+          }
+        }
       })
     )
     expect(result.current).toBe(before)

@@ -1,4 +1,9 @@
 // @vitest-environment happy-dom
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import { makeTerminalTab as makeGridTestTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
@@ -6,10 +11,7 @@ import { FOCUS_TERMINAL_PANE_EVENT, type FocusTerminalPaneDetail } from '@/const
 import { maximizeSessionGridCard } from './session-grid-card-maximize'
 import { makePaneKey } from '../../../../shared/stable-pane-id'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
-import type { Repo } from '../../../../shared/repo-types'
 import type { SessionGridItem } from '../../../../shared/session-grid-types'
-import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 
 const SSH_HOST = 'ssh:box'
 const WT_ID = 'repo-remote::/srv/checkout'
@@ -47,7 +49,9 @@ function card(overrides: Partial<SessionGridItem> = {}): SessionGridItem {
 function focusEvents(): { readonly all: () => FocusTerminalPaneDetail[]; stop: () => void } {
   const seen: FocusTerminalPaneDetail[] = []
   const listener = (e: Event): void => {
-    seen.push((e as CustomEvent<FocusTerminalPaneDetail>).detail)
+    if (e instanceof CustomEvent) {
+      seen.push(e.detail)
+    }
   }
   window.addEventListener(FOCUS_TERMINAL_PANE_EVENT, listener)
   return {
@@ -72,33 +76,38 @@ beforeEach(() => {
     activeRepoId: 'repo-local',
     activeWorktreeId: null,
     repos: [
-      { id: 'repo-local', displayName: 'local', path: '/code/local' } as unknown as Repo,
-      { id: 'repo-remote', displayName: 'remote', path: '/srv' } as unknown as Repo
+      makeGridTestRepo({ id: 'repo-local', displayName: 'local', path: '/code/local' }),
+      makeGridTestRepo({ id: 'repo-remote', displayName: 'remote', path: '/srv' })
     ],
     worktreesByRepo: {
       'repo-remote': [
-        {
+        makeGridTestWorktree('grid-fixture', '', {
           id: WT_ID,
           repoId: 'repo-remote',
           path: '/srv/checkout',
           displayName: 'checkout',
           branch: 'main'
-          // Deliberately NO hostId: this is the pre-host persisted row the builder
-          // covers at session-grid-items-builder.test.ts ('believes the pty over a
-          // workspace that never got a host stamp'). Stamping the worktree too would
-          // align the two sources and let a workspace-derived host pass unnoticed.
-        } as unknown as Worktree
+        })
       ]
     },
     tabsByWorktree: {
       [WT_ID]: [
-        { id: 'tab-remote', ptyId: SSH_PTY, worktreeId: WT_ID, title: 'Agent', createdAt: 1 }
-      ] as TerminalTab[]
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-remote',
+          ptyId: SSH_PTY,
+          worktreeId: WT_ID,
+          title: 'Agent',
+          createdAt: 1
+        })
+      ]
     },
     ptyIdsByTabId: { 'tab-remote': [SSH_PTY] },
     terminalLayoutsByTabId: {
       'tab-remote': { root: null, activeLeafId: LEAF, expandedLeafId: null }
-    } as never
+    }
   })
 })
 
@@ -126,14 +135,14 @@ describe('maximizeSessionGridCard', () => {
     useAppStore.setState({
       worktreesByRepo: {
         'repo-remote': [
-          {
+          makeGridTestWorktree('grid-fixture', '', {
             id: WT_ID,
             repoId: 'repo-remote',
             path: '/srv/checkout',
             displayName: 'checkout',
             branch: 'main',
             hostId: 'ssh:other'
-          } as unknown as Worktree
+          })
         ]
       }
     })

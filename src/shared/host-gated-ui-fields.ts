@@ -78,7 +78,7 @@ export function omitUnsupportedHostGatedUiFields<T extends object>(
     if (
       !advertised.has(gate.capability) &&
       gate.field in update &&
-      (gate.values as readonly unknown[]).includes((update as Record<string, unknown>)[gate.field])
+      gate.values.some((value) => gate.field in update && value === update[gate.field])
     ) {
       unsupported.add(gate.field)
     }
@@ -86,7 +86,11 @@ export function omitUnsupportedHostGatedUiFields<T extends object>(
   if (unsupported.size === 0) {
     return update
   }
-  return Object.fromEntries(
-    Object.entries(update).filter(([key]) => !unsupported.has(key))
-  ) as Partial<T>
+  const supported = { ...update }
+  for (const key in supported) {
+    if (unsupported.has(key)) {
+      delete supported[key]
+    }
+  }
+  return supported
 }

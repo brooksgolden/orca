@@ -73,8 +73,8 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="icon"
-              className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+              size="icon-xs"
+              className="size-7 shrink-0"
               onClick={onBack}
               aria-label={backLabel}
             >
@@ -92,9 +92,9 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="icon-xs"
                   data-testid="session-grid-new-session"
-                  className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                  className="size-7 shrink-0"
                   aria-label={newSessionLabel}
                 >
                   <Plus className="size-4" />
@@ -139,8 +139,8 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
         <div className="flex h-7 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 px-1 text-xs text-muted-foreground">
           <Button
             variant="ghost"
-            size="icon"
-            className="size-6 text-muted-foreground hover:text-foreground disabled:opacity-30"
+            size="icon-xs"
+            className="size-6"
             disabled={currentPage <= 0}
             onClick={() => onPageChange(currentPage - 1)}
             aria-label={translate(
@@ -156,8 +156,8 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
           </span>
           <Button
             variant="ghost"
-            size="icon"
-            className="size-6 text-muted-foreground hover:text-foreground disabled:opacity-30"
+            size="icon-xs"
+            className="size-6"
             disabled={currentPage >= totalPages - 1}
             onClick={() => onPageChange(currentPage + 1)}
             aria-label={translate(

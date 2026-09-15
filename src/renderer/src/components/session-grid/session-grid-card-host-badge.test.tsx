@@ -1,4 +1,9 @@
 // @vitest-environment happy-dom
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import { makeTerminalTab as makeGridTestTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,9 +13,7 @@ import { useAppStore } from '@/store'
 import SessionsGridPage from './SessionsGridPage'
 import { livePtyIdsFor } from './session-grid-test-live-ptys'
 import { dashboardHostTooltipLabel } from '../dashboard-popout/DashboardHostBadge'
-import type { Repo } from '../../../../shared/repo-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 
 // happy-dom lays nothing out, so the real virtualizer would report an empty range.
 vi.mock('@tanstack/react-virtual', async (importOriginal) => ({
@@ -41,20 +44,41 @@ function hostBadge(tabId: string): HTMLElement | null {
 function seed(): void {
   const tabsByWorktree: Record<string, TerminalTab[]> = {
     'wt-remote': [
-      { id: 'tab-remote', ptyId: 'pty-r', worktreeId: 'wt-remote', title: 'Remote', createdAt: 1 }
-    ] as TerminalTab[],
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-remote',
+        ptyId: 'pty-r',
+        worktreeId: 'wt-remote',
+        title: 'Remote',
+        createdAt: 1
+      })
+    ],
     'wt-local': [
-      { id: 'tab-local', ptyId: 'pty-l', worktreeId: 'wt-local', title: 'Local', createdAt: 2 }
-    ] as TerminalTab[],
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-local',
+        ptyId: 'pty-l',
+        worktreeId: 'wt-local',
+        title: 'Local',
+        createdAt: 2
+      })
+    ],
     'wt-runtime': [
-      {
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
         id: 'tab-runtime',
         ptyId: 'pty-rt',
         worktreeId: 'wt-runtime',
         title: 'Paired',
         createdAt: 3
-      }
-    ] as TerminalTab[]
+      })
+    ]
   }
   useAppStore.setState({
     activeView: 'sessions',
@@ -67,31 +91,60 @@ function seed(): void {
     sessionsGridTabOrder: [],
     sessionsGridHiddenTabIds: [],
     repos: [
-      { id: 'repo-remote', displayName: 'orca', path: '/srv/orca', connectionId: 'box' },
-      { id: 'repo-local', displayName: 'sytio', path: '/code/sytio' },
-      { id: 'repo-runtime', displayName: 'studio-checkout', path: '/w/studio' }
-    ] as unknown as Repo[],
+      makeGridTestRepo({
+        id: 'repo-remote',
+        displayName: 'orca',
+        path: '/srv/orca',
+        connectionId: 'box'
+      }),
+      makeGridTestRepo({ id: 'repo-local', displayName: 'sytio', path: '/code/sytio' }),
+      makeGridTestRepo({ id: 'repo-runtime', displayName: 'studio-checkout', path: '/w/studio' })
+    ],
     worktreesByRepo: {
       'repo-remote': [
-        { id: 'wt-remote', repoId: 'repo-remote', displayName: 'orca', path: '/srv/orca' }
+        makeGridTestWorktree('grid-fixture', '', {
+          branch: '',
+          id: 'wt-remote',
+          repoId: 'repo-remote',
+          displayName: 'orca',
+          path: '/srv/orca'
+        })
       ],
       'repo-local': [
-        { id: 'wt-local', repoId: 'repo-local', displayName: 'sytio', path: '/code/sytio' }
+        makeGridTestWorktree('grid-fixture', '', {
+          branch: '',
+          id: 'wt-local',
+          repoId: 'repo-local',
+          displayName: 'sytio',
+          path: '/code/sytio'
+        })
       ],
       'repo-runtime': [
-        {
+        makeGridTestWorktree('grid-fixture', '', {
+          branch: '',
           id: 'wt-runtime',
           repoId: 'repo-runtime',
           displayName: 'studio-checkout',
           path: '/w/studio',
           hostId: 'runtime:env-1'
-        }
+        })
       ]
-    } as unknown as Record<string, Worktree[]>,
+    },
     folderWorkspaces: [],
     projectGroups: [],
     sshTargetLabels: new Map([['box', 'build box']]),
-    runtimeEnvironments: [{ id: 'env-1', name: 'studio' }] as never,
+    runtimeEnvironments: [
+      {
+        id: 'env-1',
+        name: 'studio',
+        createdAt: 0,
+        updatedAt: 0,
+        lastUsedAt: null,
+        runtimeId: null,
+        endpoints: [],
+        preferredEndpointId: 'test'
+      }
+    ],
     tabsByWorktree,
     ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
     terminalLayoutsByTabId: {},

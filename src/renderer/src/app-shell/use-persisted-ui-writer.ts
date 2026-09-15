@@ -1,3 +1,4 @@
+import { isPersistedUIWriteField } from '@/store/slices/persisted-ui-write-baseline'
 import { useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../store'
@@ -55,7 +56,7 @@ function createPersistedUIWriteController(): PersistedUIWriteController {
     if (disposed) {
       return
     }
-    const fields = Object.keys(changed) as (keyof PersistedUIWriteBaseline)[]
+    const fields = Object.keys(changed).filter(isPersistedUIWriteField)
     const state = useAppStore.getState()
     const sentAtGeneration = state.persistedUIWriteBaselineGeneration
     state.notePersistedUIWriteStarted(fields)
@@ -102,7 +103,7 @@ function createPersistedUIWriteController(): PersistedUIWriteController {
           changedDuringFlight ||
           Object.keys(dirty).some(
             (field) =>
-              !fields.includes(field as keyof PersistedUIWriteBaseline) ||
+              !fields.some((sent) => sent === field) ||
               (quarantinedFields.length > 0 && !quarantinedFields.includes(field))
           )
         if (shouldRetry) {

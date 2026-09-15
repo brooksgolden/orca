@@ -269,7 +269,7 @@ describe('SidebarNav', () => {
     const desktop = await renderSidebarNav()
     expect(queryButtonByText(desktop, 'Sessions')).not.toBeNull()
 
-    const globals = globalThis as { __ORCA_WEB_CLIENT__?: boolean }
+    const globals: typeof globalThis & { __ORCA_WEB_CLIENT__?: boolean } = globalThis
     globals.__ORCA_WEB_CLIENT__ = true
     try {
       const web = await renderSidebarNav()

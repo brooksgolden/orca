@@ -1,3 +1,4 @@
+import type { PtyProviderBufferSnapshot } from '../providers/types'
 import { describe, expect, it, vi } from 'vitest'
 import type * as GitUsernameModule from '../git/git-username'
 import { OrcaRuntimeService } from './orca-runtime'
@@ -22,8 +23,8 @@ vi.mock('../hooks', () => ({
 }))
 vi.mock('../worktree-runner-script', () => ({ createSetupRunnerScript: vi.fn() }))
 
-vi.mock('../ipc/worktree-logic', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
+vi.mock(import('../ipc/worktree-logic'), async (importOriginal) => {
+  const actual = await importOriginal()
   return { ...actual, computeWorktreePath: vi.fn(), ensurePathWithinWorkspace: vi.fn() }
 })
 
@@ -31,8 +32,8 @@ vi.mock('../ipc/registered-worktree-roots-cache', () => ({
   invalidateAuthorizedRootsCache: vi.fn()
 }))
 
-vi.mock('../git/repo', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
+vi.mock(import('../git/repo'), async (importOriginal) => {
+  const actual = await importOriginal()
   return {
     ...actual,
     getDefaultBaseRef: vi.fn().mockReturnValue('origin/main'),
@@ -47,8 +48,8 @@ vi.mock('../git/git-username', async () => {
 
 // Why: default the mock store to the clamp floor (5_000ms) so legacy "restore fires after delay" assertions hold; the real default is indefinite/null.
 const LEGACY_RESTORE_MS = 5_000
-const settingsState = {
-  mobileAutoRestoreFitMs: LEGACY_RESTORE_MS as number | null
+const settingsState: { mobileAutoRestoreFitMs: number | null } = {
+  mobileAutoRestoreFitMs: LEGACY_RESTORE_MS
 }
 
 const store = {
@@ -61,11 +62,15 @@ const store = {
   }),
   getRepos: () => [store.getRepo()],
   addRepo: () => {},
-  updateRepo: () => undefined as never,
+  updateRepo: (): never => {
+    throw new Error('Unexpected updateRepo in snapshot fixture')
+  },
   getAllWorktreeMeta: () => ({}),
   getWorktreeMeta: () => undefined,
   getGitHubCache: () => ({ pr: {}, issue: {} }),
-  setWorktreeMeta: () => undefined as never,
+  setWorktreeMeta: (): never => {
+    throw new Error('Unexpected setWorktreeMeta in snapshot fixture')
+  },
   removeWorktreeMeta: () => {},
   getRetiredWorktreeNameRegistry: () => ({ exhaustedTiers: 0, names: [] }),
   addRetiredWorktreeName: () => {},
@@ -101,7 +106,7 @@ function createRuntimeWithRendererPane(args: {
   }
   rendererRegistered?: () => boolean
 }) {
-  const runtime = new OrcaRuntimeService(store)
+  const runtime = new SnapshotTestRuntime(store)
   const serializeBuffer = vi.fn(async () =>
     args.rendererFrame ? { seq: 1, ...args.rendererFrame } : null
   )
@@ -115,28 +120,40 @@ function createRuntimeWithRendererPane(args: {
     serializeBuffer,
     serializeProviderBuffer: async () =>
       args.providerFrame ? { seq: 1, source: 'headless', ...args.providerFrame } : null
-  } as never)
+  })
   return { runtime, serializeBuffer }
 }
 
-const internals = (runtime: OrcaRuntimeService) =>
-  runtime as unknown as {
-    providerSnapshotPreferredPtys: Set<string>
-    headlessTerminals: Map<string, { outputSequence: number; emulator: { dispose: () => void } }>
-    headlessHydrationState: Map<string, string>
+class SnapshotTestRuntime extends OrcaRuntimeService {
+  get snapshotState() {
+    return {
+      providerSnapshotPreferredPtys: this.providerSnapshotPreferredPtys,
+      headlessTerminals: this.headlessTerminals,
+      headlessHydrationState: this.headlessHydrationState
+    }
   }
+  useProviderCapture(capture: () => Promise<PtyProviderBufferSnapshot | null>): void {
+    this.serializeProviderTerminalBuffer = capture
+  }
+  dropHeadlessTerminal(ptyId: string): void {
+    this.disposeHeadlessTerminal(ptyId)
+  }
+}
 
 describe('viewer snapshot at the PTY grid', () => {
   it('does not turn loss of host contact during a preview probe into an exit', async () => {
-    const runtime = new OrcaRuntimeService(store)
+    const runtime = new SnapshotTestRuntime(store)
     let answer!: (live: boolean | null) => void
     runtime.setPtyController({
+      write: () => false,
+      kill: () => false,
+      getForegroundProcess: async () => null,
       hasPty: () => false,
       probePtyLiveness: () =>
         new Promise<boolean | null>((resolve) => {
           answer = resolve
         })
-    } as never)
+    })
     const pending = runtime.verifyTerminalPreviewLiveness('ssh:box:pty-1')
     runtime.markPtyLivenessUnverifiable('ssh:box:pty-1', 'host disconnected')
     answer(false)
@@ -160,16 +177,15 @@ describe('viewer snapshot at the PTY grid', () => {
         seq: 0
       }
     })
-    internals(runtime).providerSnapshotPreferredPtys.add('pty-1')
+    runtime.snapshotState.providerSnapshotPreferredPtys.add('pty-1')
     try {
       const snapshot = await runtime.serializeTerminalBuffer('pty-1', { scrollbackRows: 24 })
-      const emulator = internals(runtime).headlessTerminals.get('pty-1')!
-        .emulator as HeadlessEmulator
+      const emulator = runtime.snapshotState.headlessTerminals.get('pty-1')!.emulator
       expect(snapshot).toMatchObject({ cols: 40, rows: 24 })
       expect(emulator.getVisibleLines()).toEqual(expected)
     } finally {
       source.dispose()
-      internals(runtime).headlessTerminals.get('pty-1')?.emulator.dispose()
+      runtime.snapshotState.headlessTerminals.get('pty-1')?.emulator.dispose()
     }
   })
 
@@ -229,7 +245,7 @@ describe('viewer snapshot at the PTY grid', () => {
       providerFrame: { data: 'restored from the daemon\r\n', cols: 110, rows: 40 }
     })
     // A cold-restored session prefers the daemon's snapshot over anything main has.
-    internals(runtime).providerSnapshotPreferredPtys.add('pty-1')
+    runtime.snapshotState.providerSnapshotPreferredPtys.add('pty-1')
 
     const snapshot = await runtime.serializeTerminalBuffer('pty-1', { scrollbackRows: 24 })
 
@@ -249,7 +265,7 @@ describe('viewer snapshot at the PTY grid', () => {
       },
       rendererRegistered: () => false
     })
-    internals(runtime).providerSnapshotPreferredPtys.add('pty-1')
+    runtime.snapshotState.providerSnapshotPreferredPtys.add('pty-1')
 
     const snapshot = await runtime.serializeTerminalBuffer('pty-1', { scrollbackRows: 24 })
 
@@ -265,9 +281,9 @@ describe('viewer snapshot at the PTY grid', () => {
       providerFrame: { data: 'stale daemon frame\r\n', cols: 110, rows: 40 },
       rendererRegistered: () => false
     })
-    internals(runtime).providerSnapshotPreferredPtys.add('pty-1')
+    runtime.snapshotState.providerSnapshotPreferredPtys.add('pty-1')
     runtime.onPtyData('pty-1', 'live bytes main already parsed\r\n', Date.now())
-    const live = internals(runtime).headlessTerminals.get('pty-1')
+    const live = runtime.snapshotState.headlessTerminals.get('pty-1')
     expect(live).toBeDefined()
     const dispose = vi.spyOn(live!.emulator, 'dispose')
 
@@ -276,7 +292,7 @@ describe('viewer snapshot at the PTY grid', () => {
     expect(snapshot).toMatchObject({ source: 'headless', cols: 85, rows: 22 })
     expect(snapshot?.data).toContain('live bytes main already parsed')
     expect(dispose).not.toHaveBeenCalled()
-    expect(internals(runtime).headlessTerminals.get('pty-1')).toBe(live)
+    expect(runtime.snapshotState.headlessTerminals.get('pty-1')).toBe(live)
   })
 })
 
@@ -288,16 +304,14 @@ describe('reframed snapshot sequence', () => {
       providerFrame: { data: 'frame at seq 5\r\n', cols: 110, rows: 40, seq: 5 },
       rendererRegistered: () => false
     })
-    internals(runtime).providerSnapshotPreferredPtys.add('pty-1')
+    runtime.snapshotState.providerSnapshotPreferredPtys.add('pty-1')
     // Five chars already counted before the capture: the frame covers them.
     runtime.onPtyData('pty-1', 'abcde', Date.now())
-    ;(
-      runtime as unknown as { serializeProviderTerminalBuffer: unknown }
-    ).serializeProviderTerminalBuffer = async () => {
+    runtime.useProviderCapture(async () => {
       // Bytes published while the daemon serializes its frame.
       runtime.onPtyData('pty-1', 'after the frame\r\n', Date.now())
       return { data: 'frame at seq 5\r\n', cols: 110, rows: 40, seq: 5, source: 'headless' }
-    }
+    })
 
     const snapshot = await runtime.serializeTerminalBuffer('pty-1', { scrollbackRows: 24 })
 
@@ -316,12 +330,10 @@ describe('reframed snapshot sequence', () => {
       providerFrame: { data: 'older frame\r\n', cols: 110, rows: 40, seq: 2 },
       rendererRegistered: () => false
     })
-    internals(runtime).providerSnapshotPreferredPtys.add('pty-1')
+    runtime.snapshotState.providerSnapshotPreferredPtys.add('pty-1')
     runtime.onPtyData('pty-1', 'abcde', Date.now())
     // Nothing main-side holds (2, 5] any more (an execution-context change dropped it).
-    ;(
-      runtime as unknown as { disposeHeadlessTerminal: (ptyId: string) => void }
-    ).disposeHeadlessTerminal('pty-1')
+    runtime.dropHeadlessTerminal('pty-1')
 
     const snapshot = await runtime.serializeTerminalBuffer('pty-1', { scrollbackRows: 24 })
 
@@ -341,7 +353,7 @@ describe('viewer-created emulator', () => {
     })
     runtime.ensureHeadlessTerminalForViewer('pty-1')
     expect(runtime.hasHeadlessTerminalState('pty-1')).toBe(true)
-    expect(internals(runtime).headlessHydrationState.get('pty-1')).toBe('awaiting-serializer')
+    expect(runtime.snapshotState.headlessHydrationState.get('pty-1')).toBe('awaiting-serializer')
 
     registered = true
     runtime.onPtyData('pty-1', 'a live byte\r\n', Date.now())
@@ -349,7 +361,7 @@ describe('viewer-created emulator', () => {
     const snapshot = await runtime.serializeTerminalBuffer('pty-1', { scrollbackRows: 24 })
     expect(snapshot?.data).toContain('history the pane holds')
     expect(snapshot?.data).toContain('a live byte')
-    expect(internals(runtime).headlessHydrationState.get('pty-1')).toBe('done')
+    expect(runtime.snapshotState.headlessHydrationState.get('pty-1')).toBe('done')
   })
 
   it('is not created for a pty the runtime has no grid for', () => {
@@ -362,6 +374,6 @@ describe('viewer-created emulator', () => {
     runtime.ensureHeadlessTerminalForViewer('pty-gone')
 
     expect(runtime.hasHeadlessTerminalState('pty-gone')).toBe(false)
-    expect(internals(runtime).headlessHydrationState.has('pty-gone')).toBe(false)
+    expect(runtime.snapshotState.headlessHydrationState.has('pty-gone')).toBe(false)
   })
 })

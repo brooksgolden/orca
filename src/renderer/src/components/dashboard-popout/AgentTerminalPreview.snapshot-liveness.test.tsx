@@ -11,7 +11,7 @@ type PreviewTerminal = {
   reset: ReturnType<typeof vi.fn>
 }
 
-const terminalHarness = vi.hoisted(() => ({ instances: [] as PreviewTerminal[] }))
+const terminalHarness = vi.hoisted(() => ({ instances: new Array<PreviewTerminal>() }))
 const storeState = vi.hoisted(() => ({
   settings: null,
   keybindings: {} as Record<string, string[]>

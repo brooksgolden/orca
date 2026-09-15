@@ -1,31 +1,60 @@
+import { makeProjectGroup } from '@/components/worktree-jump-palette-test-fixtures'
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import { makeFolderWorkspace as makeGridTestFolderWorkspace } from '@/store/slices/worktrees-slice-test-fixtures'
 import { describe, expect, it } from 'vitest'
-import type { FolderWorkspace } from '../../../../shared/folder-workspace-types'
 import type { ProjectGroup } from '../../../../shared/project-group-types'
-import type { Repo } from '../../../../shared/repo-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 import {
   buildSessionGridWorktreeCatalog,
   sessionGridWorktreeLabel
 } from './session-grid-worktree-catalog'
 
 const repos = [
-  { id: 'repo-1', displayName: 'sytio' },
-  { id: 'repo-2', displayName: 'orca' }
-] as unknown as Repo[]
+  makeGridTestRepo({ id: 'repo-1', displayName: 'sytio' }),
+  makeGridTestRepo({ id: 'repo-2', displayName: 'orca' })
+]
 const worktreesByRepo = {
-  'repo-1': [{ id: 'wt-1', displayName: 'sytio', path: '/s' }],
-  'repo-2': [{ id: 'wt-2', displayName: 'orca-feature', path: '/o' }],
-  'repo-gone': [{ id: 'wt-3', displayName: 'orphan', path: '/x' }]
-} as unknown as Record<string, Worktree[]>
+  'repo-1': [
+    makeGridTestWorktree('grid-fixture', '', {
+      branch: '',
+      id: 'wt-1',
+      displayName: 'sytio',
+      path: '/s'
+    })
+  ],
+  'repo-2': [
+    makeGridTestWorktree('grid-fixture', '', {
+      branch: '',
+      id: 'wt-2',
+      displayName: 'orca-feature',
+      path: '/o'
+    })
+  ],
+  'repo-gone': [
+    makeGridTestWorktree('grid-fixture', '', {
+      branch: '',
+      id: 'wt-3',
+      displayName: 'orphan',
+      path: '/x'
+    })
+  ]
+}
 
 describe('buildSessionGridWorktreeCatalog naming', () => {
   it('names a worktree whose custom name was cleared by its branch, never "undefined"', () => {
     const { byWorktreeId } = buildSessionGridWorktreeCatalog({
       worktreesByRepo: {
         'repo-2': [
-          { id: 'wt-x', displayName: undefined, branch: 'refs/heads/feat/x', path: '/o/x' }
+          makeGridTestWorktree('grid-fixture', '', {
+            id: 'wt-x',
+            displayName: undefined,
+            branch: 'refs/heads/feat/x',
+            path: '/o/x'
+          })
         ]
-      } as unknown as Record<string, Worktree[]>,
+      },
       repos
     })
     expect(byWorktreeId.get('wt-x')).toMatchObject({
@@ -38,8 +67,15 @@ describe('buildSessionGridWorktreeCatalog naming', () => {
   it('keeps a folder workspace branchless and falls back to its folder name', () => {
     const { byWorktreeId } = buildSessionGridWorktreeCatalog({
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-f', displayName: '', branch: '', path: '/home/dev/notes' }]
-      } as unknown as Record<string, Worktree[]>,
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            id: 'wt-f',
+            displayName: '',
+            branch: '',
+            path: '/home/dev/notes'
+          })
+        ]
+      },
       repos
     })
     expect(byWorktreeId.get('wt-f')).toMatchObject({
@@ -74,7 +110,7 @@ describe('buildSessionGridWorktreeCatalog', () => {
 
   it('drops a repo with no worktrees, so the picker never shows an empty group', () => {
     const catalog = buildSessionGridWorktreeCatalog({
-      worktreesByRepo: { 'repo-1': [] } as unknown as Record<string, Worktree[]>,
+      worktreesByRepo: { 'repo-1': [] },
       repos
     })
     expect(catalog.byRepo).toEqual([])
@@ -83,10 +119,20 @@ describe('buildSessionGridWorktreeCatalog', () => {
 
   it('offers folder workspaces as launch targets, grouped by their project group', () => {
     const folderWorkspaces = [
-      { id: 'fw-1', projectGroupId: 'group-1', name: 'notes', folderPath: '/home/dev/notes' },
-      { id: 'fw-2', projectGroupId: 'group-1', name: 'scratch', folderPath: '/home/dev/scratch' }
-    ] as unknown as FolderWorkspace[]
-    const projectGroups = [{ id: 'group-1', name: 'Folders' }] as unknown as ProjectGroup[]
+      makeGridTestFolderWorkspace({
+        id: 'fw-1',
+        projectGroupId: 'group-1',
+        name: 'notes',
+        folderPath: '/home/dev/notes'
+      }),
+      makeGridTestFolderWorkspace({
+        id: 'fw-2',
+        projectGroupId: 'group-1',
+        name: 'scratch',
+        folderPath: '/home/dev/scratch'
+      })
+    ]
+    const projectGroups: ProjectGroup[] = [makeProjectGroup({ id: 'group-1', name: 'Folders' })]
 
     const { byRepo, byWorktreeId } = buildSessionGridWorktreeCatalog({
       worktreesByRepo: {},
@@ -109,13 +155,27 @@ describe('buildSessionGridWorktreeCatalog', () => {
 
 describe('buildSessionGridWorktreeCatalog execution hosts', () => {
   const sshRepos = [
-    { id: 'repo-ssh', displayName: 'orca', connectionId: 'box' },
-    { id: 'repo-1', displayName: 'sytio' }
-  ] as unknown as Repo[]
+    makeGridTestRepo({ id: 'repo-ssh', displayName: 'orca', connectionId: 'box' }),
+    makeGridTestRepo({ id: 'repo-1', displayName: 'sytio' })
+  ]
   const sshWorktrees = {
-    'repo-ssh': [{ id: 'wt-ssh', displayName: 'orca', path: '/srv/orca' }],
-    'repo-1': [{ id: 'wt-local', displayName: 'sytio', path: '/s' }]
-  } as unknown as Record<string, Worktree[]>
+    'repo-ssh': [
+      makeGridTestWorktree('grid-fixture', '', {
+        branch: '',
+        id: 'wt-ssh',
+        displayName: 'orca',
+        path: '/srv/orca'
+      })
+    ],
+    'repo-1': [
+      makeGridTestWorktree('grid-fixture', '', {
+        branch: '',
+        id: 'wt-local',
+        displayName: 'sytio',
+        path: '/s'
+      })
+    ]
+  }
 
   it('names the SSH host of a remote workspace and leaves a local one unnamed', () => {
     const { byWorktreeId } = buildSessionGridWorktreeCatalog({
@@ -157,8 +217,16 @@ describe('buildSessionGridWorktreeCatalog execution hosts', () => {
   it('calls a paired runtime environment remote, and names it after the environment', () => {
     const { byWorktreeId } = buildSessionGridWorktreeCatalog({
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-rt', displayName: 'sytio', path: '/s', hostId: 'runtime:env-1' }]
-      } as unknown as Record<string, Worktree[]>,
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            id: 'wt-rt',
+            displayName: 'sytio',
+            path: '/s',
+            hostId: 'runtime:env-1'
+          })
+        ]
+      },
       repos,
       runtimeEnvironments: [{ id: 'env-1', name: 'studio' }]
     })
@@ -174,11 +242,14 @@ describe('buildSessionGridWorktreeCatalog execution hosts', () => {
       worktreesByRepo: {},
       repos: [],
       folderWorkspaces: [
-        { id: 'fw-1', projectGroupId: 'group-1', name: 'notes', folderPath: '/srv/notes' }
-      ] as unknown as FolderWorkspace[],
-      projectGroups: [
-        { id: 'group-1', name: 'Folders', connectionId: 'box' }
-      ] as unknown as ProjectGroup[],
+        makeGridTestFolderWorkspace({
+          id: 'fw-1',
+          projectGroupId: 'group-1',
+          name: 'notes',
+          folderPath: '/srv/notes'
+        })
+      ],
+      projectGroups: [makeProjectGroup({ id: 'group-1', name: 'Folders', connectionId: 'box' })],
       sshTargetLabels: new Map([['box', 'build box']])
     })
     // The projection folds only the workspace's OWN connectionId into `hostId`, so the group's
@@ -196,15 +267,15 @@ describe('buildSessionGridWorktreeCatalog execution hosts', () => {
       worktreesByRepo: {},
       repos: [],
       folderWorkspaces: [
-        {
+        makeGridTestFolderWorkspace({
           id: 'fw-3',
           projectGroupId: 'group-1',
           name: 'notes',
           folderPath: '/srv/notes',
           connectionId: 'box'
-        }
-      ] as unknown as FolderWorkspace[],
-      projectGroups: [{ id: 'group-1', name: 'Folders' }] as unknown as ProjectGroup[],
+        })
+      ],
+      projectGroups: [makeProjectGroup({ id: 'group-1', name: 'Folders' })],
       sshTargetLabels: new Map([['box', 'build box']])
     })
     expect(byWorktreeId.get('folder:fw-3')).toMatchObject({
@@ -219,15 +290,15 @@ describe('buildSessionGridWorktreeCatalog execution hosts', () => {
       worktreesByRepo: {},
       repos: [],
       folderWorkspaces: [
-        {
+        makeGridTestFolderWorkspace({
           id: 'fw-2',
           projectGroupId: 'group-1',
           name: 'scratch',
           folderPath: '/home/dev/scratch',
           executionHostId: 'local'
-        }
-      ] as unknown as FolderWorkspace[],
-      projectGroups: [{ id: 'group-1', name: 'Folders' }] as unknown as ProjectGroup[]
+        })
+      ],
+      projectGroups: [makeProjectGroup({ id: 'group-1', name: 'Folders' })]
     })
     expect(byWorktreeId.get('folder:fw-2')).toMatchObject({
       hostKind: 'local',

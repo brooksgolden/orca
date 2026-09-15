@@ -1,3 +1,4 @@
+import { shallow } from 'zustand/vanilla/shallow'
 import { serializeSessionGridWheelTarget } from '../../../../shared/session-grid-types'
 import { isHostGatedUiField } from '../../../../shared/host-gated-ui-fields'
 import type { PersistedUIState } from '../../../../shared/persisted-ui-state-types'
@@ -86,35 +87,49 @@ const PERSISTED_UI_WRITE_BASELINE_FIELD_SET = {
 
 export const PERSISTED_UI_WRITE_BASELINE_FIELDS = Object.keys(
   PERSISTED_UI_WRITE_BASELINE_FIELD_SET
-) as readonly (keyof PersistedUIWriteBaseline)[]
+).filter(isPersistedUIWriteField)
+
+export function isPersistedUIWriteField(field: string): field is keyof PersistedUIWriteBaseline {
+  return Object.hasOwn(PERSISTED_UI_WRITE_BASELINE_FIELD_SET, field)
+}
 
 /** Pick the writer-owned fields off a hydrated mirror (a structural superset). */
 export function capturePersistedUIWriteBaseline(
   mirror: PersistedUIWriteBaseline
 ): PersistedUIWriteBaseline {
-  const captured = {} as Record<string, unknown>
-  for (const field of PERSISTED_UI_WRITE_BASELINE_FIELDS) {
-    captured[field] = mirror[field]
+  return {
+    sidebarWidth: mirror.sidebarWidth,
+    rightSidebarOpen: mirror.rightSidebarOpen,
+    rightSidebarTab: mirror.rightSidebarTab,
+    rightSidebarExplorerView: mirror.rightSidebarExplorerView,
+    rightSidebarWidth: mirror.rightSidebarWidth,
+    markdownTocPanelWidth: mirror.markdownTocPanelWidth,
+    combinedDiffFileTreeWidth: mirror.combinedDiffFileTreeWidth,
+    groupBy: mirror.groupBy,
+    sortBy: mirror.sortBy,
+    projectOrderBy: mirror.projectOrderBy,
+    showSleepingWorkspaces: mirror.showSleepingWorkspaces,
+    hideDefaultBranchWorkspace: mirror.hideDefaultBranchWorkspace,
+    hideAutomationGeneratedWorkspaces: mirror.hideAutomationGeneratedWorkspaces,
+    hideCliCreatedWorkspaces: mirror.hideCliCreatedWorkspaces,
+    hideDetachedHeadWorkspaces: mirror.hideDetachedHeadWorkspaces,
+    hideWorkspacesFromOtherDevices: mirror.hideWorkspacesFromOtherDevices,
+    alwaysShowDefaultBranchWorkspace: mirror.alwaysShowDefaultBranchWorkspace,
+    showDotfilesByWorktree: mirror.showDotfilesByWorktree,
+    filterRepoIds: mirror.filterRepoIds,
+    acknowledgedAgentsByPaneKey: mirror.acknowledgedAgentsByPaneKey,
+    activityClearedAtByPaneKey: mirror.activityClearedAtByPaneKey,
+    manuallyUnreadTurnsByPaneKey: mirror.manuallyUnreadTurnsByPaneKey,
+    sessionsGridPreset: mirror.sessionsGridPreset,
+    sessionsGridZoom: mirror.sessionsGridZoom,
+    sessionsGridShowEmpty: mirror.sessionsGridShowEmpty,
+    sessionsGridFilter: mirror.sessionsGridFilter,
+    sessionsGridStateFilter: mirror.sessionsGridStateFilter,
+    sessionsGridScrollMode: mirror.sessionsGridScrollMode,
+    sessionsGridWheelTarget: mirror.sessionsGridWheelTarget,
+    sessionsGridTabOrder: mirror.sessionsGridTabOrder,
+    sessionsGridHiddenTabIds: mirror.sessionsGridHiddenTabIds
   }
-  return captured as PersistedUIWriteBaseline
-}
-
-function shallowRecordEqual(
-  a: Record<string, unknown> | undefined,
-  b: Record<string, unknown> | undefined
-): boolean {
-  if (a === b) {
-    return true
-  }
-  if (!a || !b) {
-    return false
-  }
-  const aKeys = Object.keys(a)
-  return aKeys.length === Object.keys(b).length && aKeys.every((key) => Object.is(a[key], b[key]))
-}
-
-function stringArrayEqual(a: readonly string[], b: readonly string[]): boolean {
-  return a === b || (a.length === b.length && a.every((value, i) => value === b[i]))
 }
 
 function writeFieldEqual(field: keyof PersistedUIWriteBaseline, a: unknown, b: unknown): boolean {
@@ -126,7 +141,7 @@ function writeFieldEqual(field: keyof PersistedUIWriteBaseline, a: unknown, b: u
     field === 'sessionsGridTabOrder' ||
     field === 'sessionsGridHiddenTabIds'
   ) {
-    return stringArrayEqual(a as readonly string[], b as readonly string[])
+    return shallow(a, b)
   }
   if (
     field === 'showDotfilesByWorktree' ||
@@ -134,10 +149,7 @@ function writeFieldEqual(field: keyof PersistedUIWriteBaseline, a: unknown, b: u
     field === 'activityClearedAtByPaneKey' ||
     field === 'manuallyUnreadTurnsByPaneKey'
   ) {
-    return shallowRecordEqual(
-      a as Record<string, unknown> | undefined,
-      b as Record<string, unknown> | undefined
-    )
+    return shallow(a, b)
   }
   return Object.is(a, b)
 }
@@ -147,13 +159,16 @@ export function diffPersistedUIWriteFields(
   current: PersistedUIWriteBaseline,
   baseline: PersistedUIWriteBaseline
 ): Partial<PersistedUIWriteBaseline> {
-  const changed = {} as Record<string, unknown>
+  const changed: Partial<PersistedUIWriteBaseline> = {}
+  const copy = <K extends keyof PersistedUIWriteBaseline>(field: K): void => {
+    changed[field] = current[field]
+  }
   for (const field of PERSISTED_UI_WRITE_BASELINE_FIELDS) {
     if (!writeFieldEqual(field, current[field], baseline[field])) {
-      changed[field] = current[field]
+      copy(field)
     }
   }
-  return changed as Partial<PersistedUIWriteBaseline>
+  return changed
 }
 
 const UNRECOGNIZED_KEY_MESSAGE = /unrecognized key/i
@@ -168,11 +183,16 @@ export function quarantineRejectedPersistedUIWriteFields(
   error: unknown,
   changed: Partial<PersistedUIWriteBaseline>
 ): Partial<PersistedUIWriteBaseline> | null {
-  const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown }
-  if (code !== 'invalid_argument') {
+  if (
+    !error ||
+    typeof error !== 'object' ||
+    !('code' in error) ||
+    error.code !== 'invalid_argument'
+  ) {
     return null
   }
-  const sent = Object.keys(changed) as (keyof PersistedUIWriteBaseline)[]
+  const message = 'message' in error ? error.message : undefined
+  const sent = Object.keys(changed).filter(isPersistedUIWriteField)
   const named =
     typeof message === 'string' && UNRECOGNIZED_KEY_MESSAGE.test(message)
       ? [...message.matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? '')
@@ -215,11 +235,7 @@ export function persistedUIWriteFieldsToWireUpdate(
       // main, which owns a mutable array — copy at the boundary rather than widening the wire type.
       update.filterRepoIds = [...(fields.filterRepoIds ?? [])]
     } else {
-      assignSameNameWireField(
-        update,
-        field,
-        fields[field] as PersistedUIWriteBaseline[typeof field]
-      )
+      assignSameNameWireField(update, field, fields[field])
     }
   }
   return update
@@ -242,7 +258,7 @@ void assertSameNameFieldsAssignable
 function assignSameNameWireField<K extends SameNameWriteField>(
   update: Partial<PersistedUIState>,
   field: K,
-  value: PersistedUIWriteBaseline[K]
+  value: PersistedUIState[K]
 ): void {
-  ;(update as Record<SameNameWriteField, unknown>)[field] = value
+  update[field] = value
 }

@@ -23,7 +23,7 @@ const WORKTREE = 'repo::/tmp/app'
 function storeWithTabs(): ReturnType<typeof createTestStore> {
   const store = createTestStore()
   seedStore(store, {
-    repos: [{ id: 'repo', path: '/tmp/app', name: 'app' }] as never,
+    repos: [{ id: 'repo', path: '/tmp/app', displayName: 'app', badgeColor: '', addedAt: 0 }],
     worktreesByRepo: { repo: [makeWorktree({ id: WORKTREE, repoId: 'repo', path: '/tmp/app' })] },
     tabsByWorktree: {
       [WORKTREE]: [

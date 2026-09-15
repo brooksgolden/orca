@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Terminal } from '@xterm/xterm'
 import { createPreviewClipboardPaster } from './preview-terminal-paste'
 import type { DashboardCardTerminalInput } from '../../../../shared/dashboard-snapshot'
 
@@ -14,9 +13,10 @@ describe('createPreviewClipboardPaster', () => {
   let container: HTMLElement
   let focusTarget: HTMLElement
   let terminal: {
+    options: {}
     modes: { bracketedPasteMode: boolean }
-    input: ReturnType<typeof vi.fn>
-    paste: ReturnType<typeof vi.fn>
+    input: ReturnType<typeof vi.fn<(data: string) => void>>
+    paste: ReturnType<typeof vi.fn<(text: string) => void>>
   }
   let terminalInput: DashboardCardTerminalInput | null
   let disposed: boolean
@@ -25,7 +25,7 @@ describe('createPreviewClipboardPaster', () => {
     createPreviewClipboardPaster({
       ptyId: 'pty-1',
       container,
-      getTerminal: () => terminal as unknown as Terminal,
+      getTerminal: () => terminal,
       getTerminalInput: () => terminalInput,
       isDisposed: () => disposed
     })(document.activeElement, source)
@@ -38,7 +38,7 @@ describe('createPreviewClipboardPaster', () => {
     container.appendChild(focusTarget)
     document.body.appendChild(container)
     focusTarget.focus()
-    terminal = { modes: { bracketedPasteMode: true }, input: vi.fn(), paste: vi.fn() }
+    terminal = { options: {}, modes: { bracketedPasteMode: true }, input: vi.fn(), paste: vi.fn() }
     terminalInput = null
     disposed = false
     readClipboardText.mockResolvedValue('')
@@ -109,7 +109,7 @@ describe('createPreviewClipboardPaster', () => {
     await createPreviewClipboardPaster({
       ptyId: 'pty-1',
       container,
-      getTerminal: () => terminal as unknown as Terminal,
+      getTerminal: () => terminal,
       getTerminalInput: () => terminalInput,
       isDisposed: () => disposed
     })(activeElementAtDispatch, 'keyboard')

@@ -1,4 +1,9 @@
 // @vitest-environment happy-dom
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import { makeTerminalTab as makeGridTestTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 
 /**
  * The toolbar re-renders are the page's most expensive constant cost, so this pins the
@@ -15,8 +20,6 @@ import { useAppStore } from '@/store'
 import SessionsGridPage from './SessionsGridPage'
 import { livePtyIdsFor } from './session-grid-test-live-ptys'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Repo } from '../../../../shared/repo-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 
 vi.mock('@tanstack/react-virtual', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactVirtual>()),
@@ -54,15 +57,40 @@ vi.mock('../dashboard-popout/AgentTerminalPreview', () => ({
 function seed(): void {
   const tabsByWorktree: Record<string, TerminalTab[]> = {
     'wt-1': [
-      { id: 'tab-1', ptyId: 'pty-1', worktreeId: 'wt-1', title: 'One', createdAt: 1 },
-      { id: 'tab-2', ptyId: 'pty-2', worktreeId: 'wt-1', title: 'Two', createdAt: 2 }
-    ] as TerminalTab[]
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-1',
+        ptyId: 'pty-1',
+        worktreeId: 'wt-1',
+        title: 'One',
+        createdAt: 1
+      }),
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-2',
+        ptyId: 'pty-2',
+        worktreeId: 'wt-1',
+        title: 'Two',
+        createdAt: 2
+      })
+    ]
   }
   useAppStore.setState({
     activeView: 'sessions',
-    repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+    repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
     worktreesByRepo: {
-      'repo-1': [{ id: 'wt-1', displayName: 'sytio', branch: 'main' } as unknown as Worktree]
+      'repo-1': [
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-1',
+          displayName: 'sytio',
+          branch: 'main'
+        })
+      ]
     },
     tabsByWorktree,
     ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),

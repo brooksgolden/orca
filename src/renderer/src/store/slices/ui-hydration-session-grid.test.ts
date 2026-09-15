@@ -54,6 +54,7 @@ describe('session grid hydration', () => {
   it('ignores a preset, scroll mode, wheel target or state filter the layout has no case for', () => {
     const store = createUIStore()
     store.getState().hydratePersistedUI(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Injects unsupported persisted enum values to verify startup sanitization.
       makePersistedUI({
         sessionsGridPreset: '9x9',
         sessionsGridScrollMode: 'smooth',
@@ -120,6 +121,7 @@ describe('session grid state filter hydration', () => {
     store.getState().setSessionsGridStateFilter('idle')
     store
       .getState()
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Injects an unsupported persisted state bucket to verify it is rejected.
       .hydratePersistedUI(makePersistedUI({ sessionsGridStateFilter: 'blocked' } as never), 'sync')
     expect(store.getState().sessionsGridStateFilter).toBe('idle')
   })
@@ -169,18 +171,18 @@ describe('session grid hidden tabs hydration', () => {
     store.getState().toggleSessionsGridHiddenTab('a')
     store
       .getState()
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Injects a persisted string in place of an array to verify malformed storage is rejected.
       .hydratePersistedUI(makePersistedUI({ sessionsGridHiddenTabIds: 'a' } as never), 'sync')
     expect(store.getState().sessionsGridHiddenTabIds).toEqual(['a'])
   })
 
   it('sanitizes a persisted hidden list: dupes and non-strings go', () => {
     const store = createUIStore()
-    store
-      .getState()
-      .hydratePersistedUI(
-        makePersistedUI({ sessionsGridHiddenTabIds: ['a', 'a', 7, '', 'b'] } as never),
-        'startup'
-      )
+    store.getState().hydratePersistedUI(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Injects corrupt persisted list entries to verify filtering and deduplication.
+      makePersistedUI({ sessionsGridHiddenTabIds: ['a', 'a', 7, '', 'b'] } as never),
+      'startup'
+    )
     expect(store.getState().sessionsGridHiddenTabIds).toEqual(['a', 'b'])
   })
 

@@ -1,4 +1,8 @@
 // @vitest-environment happy-dom
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
 
 /**
  * Pins the store reads `useTabAgent` does through the FOCUSED pane key —
@@ -17,8 +21,6 @@ import type { PaneForegroundAgentEntry } from '@/store/slices/pane-foreground-ag
 import type { AgentStatusEntry, AgentType } from '../../../shared/agent-status-types'
 import { makePaneKey } from '../../../shared/stable-pane-id'
 import type { SleepingAgentSessionRecord } from '../../../shared/agent-session-resume'
-import type { Repo } from '../../../shared/repo-types'
-import type { Worktree } from '../../../shared/worktree/types'
 import type { TerminalLayoutSnapshot, TerminalTab } from '../../../shared/terminal-tab-types'
 import type { TuiAgent } from '../../../shared/tui-agent'
 import { useTabAgent } from './use-tab-agent'
@@ -79,16 +81,32 @@ function doneStatus(paneKey: string, agentType: AgentType): AgentStatusEntry {
   }
 }
 
-function sleepingRecord(agent: TuiAgent): SleepingAgentSessionRecord {
-  return { agent } as unknown as SleepingAgentSessionRecord
+function sleepingRecord(agent: SleepingAgentSessionRecord['agent']): SleepingAgentSessionRecord {
+  return {
+    agent,
+    paneKey: FOCUSED_PANE,
+    worktreeId: 'wt-1',
+    providerSession: { key: 'session_id', id: 'sleeping-session' },
+    prompt: '',
+    state: 'done',
+    capturedAt: 1,
+    updatedAt: 1
+  }
 }
 
 /** A repo whose worktree the tab lives in; `connectionId` is what makes it remote. */
 function seedWorkspace(connectionId?: string): void {
   useAppStore.setState({
-    repos: [{ id: REPO_ID, connectionId } as unknown as Repo],
+    repos: [makeGridTestRepo({ id: REPO_ID, connectionId })],
     worktreesByRepo: {
-      [REPO_ID]: [{ id: WORKTREE_ID, repoId: REPO_ID } as unknown as Worktree]
+      [REPO_ID]: [
+        makeGridTestWorktree('grid-fixture', '', {
+          branch: '',
+          path: '',
+          id: WORKTREE_ID,
+          repoId: REPO_ID
+        })
+      ]
     }
   })
 }

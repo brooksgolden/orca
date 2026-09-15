@@ -34,7 +34,7 @@ export function installSessionGridWheelRouting(args: {
   let pointer: { x: number; y: number; zone: WheelOwner } | undefined
 
   const terminalAt = (target: EventTarget | null): WheelOwner => {
-    const element = target as Element | null
+    const element = target instanceof Element ? target : null
     const terminal = element?.closest?.<HTMLElement>('.xterm') ?? null
     return terminal && container.contains(terminal) ? terminal : null
   }

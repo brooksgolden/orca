@@ -50,10 +50,13 @@ describe('session grid card restoration', () => {
   })
 
   it('loads a cold card on request without mounting its siblings or navigating', () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = renderHook<
+      ReturnType<typeof useSessionGridCardRestore>,
+      { ptyId: string | null }
+    >(
       ({ ptyId }: { ptyId: string | null }) =>
         useSessionGridCardRestore({ worktreeId: 'folder', tabId: 'cold', ptyId }),
-      { initialProps: { ptyId: null as string | null } }
+      { initialProps: { ptyId: null } }
     )
     expect(takeAllPendingBackgroundTerminalWorktreeMounts()).toEqual([])
     act(() => result.current.restore())

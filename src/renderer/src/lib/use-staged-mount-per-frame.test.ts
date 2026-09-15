@@ -7,9 +7,8 @@ import { useStagedMountPerFrame } from './use-staged-mount-per-frame'
 describe('useStagedMountPerFrame', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    vi.stubGlobal(
-      'requestAnimationFrame',
-      (cb: FrameRequestCallback) => setTimeout(() => cb(0), 16) as unknown as number
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      window.setTimeout(() => cb(0), 16)
     )
     vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id))
   })

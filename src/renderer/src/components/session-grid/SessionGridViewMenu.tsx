@@ -125,7 +125,7 @@ export function SessionGridZoomStepper({ className }: { className?: string }): R
         variant="ghost"
         size="icon-xs"
         data-testid="session-grid-zoom-out"
-        className="h-full w-6 rounded-none text-muted-foreground hover:text-foreground"
+        className="h-full w-6"
         disabled={zoom <= SESSION_GRID_ZOOM_MIN}
         onClick={() => setSessionsGridZoom(steppedZoom(zoom, -1))}
         aria-label={translate(
@@ -159,7 +159,7 @@ export function SessionGridZoomStepper({ className }: { className?: string }): R
         variant="ghost"
         size="icon-xs"
         data-testid="session-grid-zoom-in"
-        className="h-full w-6 rounded-none text-muted-foreground hover:text-foreground"
+        className="h-full w-6"
         disabled={zoom >= SESSION_GRID_ZOOM_MAX}
         onClick={() => setSessionsGridZoom(steppedZoom(zoom, 1))}
         aria-label={translate('auto.components.session.grid.SessionGridViewMenu.zoomIn', 'Zoom in')}
@@ -169,9 +169,6 @@ export function SessionGridZoomStepper({ className }: { className?: string }): R
     </div>
   )
 }
-
-const SECTION_LABEL_CLASS =
-  'text-[11px] font-semibold uppercase tracking-wider text-muted-foreground'
 
 /**
  * Everything that shapes the view and is set once in a while: layout, zoom, vacant slots,
@@ -208,13 +205,10 @@ export function SessionGridViewMenu({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           data-testid="session-grid-view-menu"
           aria-label={translate('auto.components.session.grid.SessionGridViewMenu.trigger', 'View')}
-          className={cn(
-            'h-7 gap-1.5 px-2 font-mono text-xs border-border/80 bg-background/50 @max-xl/toolbar:w-7 @max-xl/toolbar:px-0',
-            className
-          )}
+          className={cn('h-7 @max-xl/toolbar:w-7', className)}
         >
           <LayoutGrid className="size-3.5 text-muted-foreground" />
           <span className="@max-2xl/toolbar:!hidden">{getPresetLabels()[preset]}</span>
@@ -222,21 +216,26 @@ export function SessionGridViewMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-52">
-        <DropdownMenuLabel className={SECTION_LABEL_CLASS}>
+        <DropdownMenuLabel>
           {translate('auto.components.session.grid.SessionGridToolbar.5931c68e4d', 'Grid Layout')}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={preset}
-          onValueChange={(value) => setSessionsGridPreset(value as SessionGridLayoutPreset)}
+          onValueChange={(value) => {
+            const next = SESSION_GRID_PRESETS.find((candidate) => candidate === value)
+            if (next) {
+              setSessionsGridPreset(next)
+            }
+          }}
         >
           {SESSION_GRID_PRESETS.map((option) => (
-            <DropdownMenuRadioItem key={option} value={option} className="font-mono text-xs">
+            <DropdownMenuRadioItem key={option} value={option}>
               {getPresetLabels()[option]}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className={cn(SECTION_LABEL_CLASS, 'flex items-center')}>
+        <DropdownMenuLabel className="flex items-center">
           {translate('auto.components.session.grid.SessionGridViewMenu.zoom', 'Zoom')}
           <span className="ml-auto font-normal tabular-nums normal-case tracking-normal">
             {formatZoom(zoom)}
@@ -249,7 +248,6 @@ export function SessionGridViewMenu({
             keepOpen(event)
             setSessionsGridZoom(steppedZoom(zoom, 1))
           }}
-          className="text-xs"
         >
           <Plus />
           {translate('auto.components.session.grid.SessionGridViewMenu.zoomIn', 'Zoom in')}
@@ -261,7 +259,6 @@ export function SessionGridViewMenu({
             keepOpen(event)
             setSessionsGridZoom(steppedZoom(zoom, -1))
           }}
-          className="text-xs"
         >
           <Minus />
           {translate('auto.components.session.grid.SessionGridViewMenu.zoomOut', 'Zoom out')}
@@ -273,7 +270,6 @@ export function SessionGridViewMenu({
             keepOpen(event)
             setSessionsGridZoom(SESSION_GRID_ZOOM_DEFAULT)
           }}
-          className="text-xs"
         >
           {translate('auto.components.session.grid.SessionGridViewMenu.zoomReset', 'Reset zoom')}
         </DropdownMenuItem>
@@ -283,7 +279,6 @@ export function SessionGridViewMenu({
           data-testid="session-grid-show-empty"
           onCheckedChange={toggleSessionsGridShowEmpty}
           onSelect={keepOpen}
-          className="text-xs"
         >
           {translate(
             'auto.components.session.grid.SessionGridToolbar.a28cc8ef24',
@@ -299,7 +294,6 @@ export function SessionGridViewMenu({
           data-count={hiddenCount}
           onCheckedChange={onToggleReveal}
           onSelect={keepOpen}
-          className="text-xs"
         >
           {translate(
             'auto.components.session.grid.SessionGridViewMenu.showHidden',
@@ -308,7 +302,7 @@ export function SessionGridViewMenu({
           <FilterOptionCount count={hiddenCount} />
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className={SECTION_LABEL_CLASS}>
+        <DropdownMenuLabel>
           {translate(
             'auto.components.session.grid.SessionGridToolbar.1f61e1b041',
             'Scroll Behavior'
@@ -316,27 +310,37 @@ export function SessionGridViewMenu({
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={scrollMode}
-          onValueChange={(value) => setSessionsGridScrollMode(value as SessionGridScrollMode)}
+          onValueChange={(value) => {
+            const next = SESSION_GRID_SCROLL_MODES.find((candidate) => candidate === value)
+            if (next) {
+              setSessionsGridScrollMode(next)
+            }
+          }}
         >
           {SESSION_GRID_SCROLL_MODES.map((mode) => (
-            <DropdownMenuRadioItem key={mode} value={mode} className="text-xs">
+            <DropdownMenuRadioItem key={mode} value={mode}>
               {getScrollModeLabels()[mode]}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className={SECTION_LABEL_CLASS}>
+        <DropdownMenuLabel>
           {translate('sessionGrid.wheel.label', 'Wheel over terminals')}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={wheelTarget}
-          onValueChange={(value) => setSessionsGridWheelTarget(value as SessionGridWheelTarget)}
+          onValueChange={(value) => {
+            const next = SESSION_GRID_WHEEL_TARGETS.find((candidate) => candidate === value)
+            if (next) {
+              setSessionsGridWheelTarget(next)
+            }
+          }}
         >
           {SESSION_GRID_WHEEL_TARGETS.map((target) => (
             <DropdownMenuRadioItem
               key={target}
               value={target}
-              className="flex flex-col items-start gap-0.5 text-xs"
+              className="flex flex-col items-start"
             >
               <span>{getWheelTargetLabels()[target]}</span>
               <span className="text-[10px] font-normal text-muted-foreground">

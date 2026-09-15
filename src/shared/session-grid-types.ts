@@ -40,15 +40,11 @@ export function serializeSessionGridWheelTarget(
 
 /** Preset off the wire or disk, or undefined for anything the switch would not handle. */
 export function normalizeSessionGridPreset(value: unknown): SessionGridLayoutPreset | undefined {
-  return (SESSION_GRID_PRESETS as readonly unknown[]).includes(value)
-    ? (value as SessionGridLayoutPreset)
-    : undefined
+  return SESSION_GRID_PRESETS.find((candidate) => candidate === value)
 }
 
 export function normalizeSessionGridScrollMode(value: unknown): SessionGridScrollMode | undefined {
-  return (SESSION_GRID_SCROLL_MODES as readonly unknown[]).includes(value)
-    ? (value as SessionGridScrollMode)
-    : undefined
+  return SESSION_GRID_SCROLL_MODES.find((candidate) => candidate === value)
 }
 
 export function normalizeSessionGridWheelTarget(
@@ -57,9 +53,7 @@ export function normalizeSessionGridWheelTarget(
   if (value === 'auto') {
     return 'focus'
   }
-  return (SESSION_GRID_WHEEL_TARGETS as readonly unknown[]).includes(value)
-    ? (value as SessionGridWheelTarget)
-    : undefined
+  return SESSION_GRID_WHEEL_TARGETS.find((candidate) => candidate === value)
 }
 
 /**
@@ -79,9 +73,7 @@ export const SESSION_GRID_STATE_FILTERS: readonly SessionGridStateFilter[] = [
 export function normalizeSessionGridStateFilter(
   value: unknown
 ): SessionGridStateFilter | undefined {
-  return (SESSION_GRID_STATE_FILTERS as readonly unknown[]).includes(value)
-    ? (value as SessionGridStateFilter)
-    : undefined
+  return SESSION_GRID_STATE_FILTERS.find((candidate) => candidate === value)
 }
 
 /** The tab bar's activity vocabulary (`terminalTabActivityToAgentDotState`), with `idle` for a tab showing no live state. */

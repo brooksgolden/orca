@@ -1,6 +1,4 @@
-import type { Terminal } from '@xterm/xterm'
-
-type PreviewBoxFitTerminal = Pick<Terminal, 'rows' | 'buffer'>
+type PreviewBoxFitTerminal = { rows: number; buffer: { active: { cursorY: number } } }
 
 /** `width` clips tall buffers so the cursor row stays readable; `both` because a claim clamped at the 8-row floor overflows a grid card. */
 export type PreviewBoxFitAxis = 'width' | 'both'

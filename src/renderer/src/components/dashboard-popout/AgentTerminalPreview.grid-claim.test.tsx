@@ -8,7 +8,7 @@ type PreviewTerminal = {
   write: ReturnType<typeof vi.fn>
 }
 
-const terminalHarness = vi.hoisted(() => ({ instances: [] as PreviewTerminal[] }))
+const terminalHarness = vi.hoisted(() => ({ instances: new Array<PreviewTerminal>() }))
 const storeState = vi.hoisted(() => ({
   settings: null,
   keybindings: {} as Record<string, string[]>
@@ -109,9 +109,8 @@ describe('AgentTerminalPreview grid claim', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     // happy-dom has no rAF loop under fake timers; run callbacks as macrotasks.
-    vi.stubGlobal(
-      'requestAnimationFrame',
-      (cb: FrameRequestCallback) => setTimeout(() => cb(0), 16) as unknown as number
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      window.setTimeout(() => cb(0), 16)
     )
     terminalHarness.instances.length = 0
     emitData = null

@@ -1,4 +1,8 @@
 // @vitest-environment happy-dom
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
 
 /**
  * The two new axes as the user meets them: a state chip has to reflow the grid, not
@@ -17,9 +21,6 @@ import { livePtyIdsFor } from './session-grid-test-live-ptys'
 import { resetTerminalTabActivityFlagsCacheForTest } from '@/components/tab-bar/terminal-tab-activity-status'
 import { sessionGridVisibilityActionLabel } from './session-grid-visibility-labels'
 import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
-import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Repo } from '../../../../shared/repo-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 
 vi.mock('@tanstack/react-virtual', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactVirtual>()),
@@ -51,30 +52,41 @@ const LEAVES = [
 function entry(paneKey: string, state: 'blocked' | 'working' | 'done'): AgentStatusEntry {
   const updatedAt = Date.now()
   return {
+    stateHistory: [],
     paneKey,
     state,
     agentType: 'claude',
     prompt: '',
     updatedAt,
     stateStartedAt: updatedAt
-  } as unknown as AgentStatusEntry
+  }
 }
 
 /** `count` cards in one workspace, each on its own leaf, with an optional per-card status. */
 function seedCards(count: number, statuses: Record<number, 'blocked' | 'working' | 'done'> = {}) {
   const tabs = Array.from({ length: count }, (_, i) => ({
+    customTitle: null,
+    color: null,
+    sortOrder: 0,
     id: `tab-${i}`,
     ptyId: `pty-${i}`,
     worktreeId: 'wt-1',
     title: `Session ${i}`,
     createdAt: i
-  })) as TerminalTab[]
+  }))
   const tabsByWorktree = { 'wt-1': tabs }
   useAppStore.setState({
     activeView: 'sessions',
-    repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+    repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
     worktreesByRepo: {
-      'repo-1': [{ id: 'wt-1', displayName: 'sytio', branch: 'main' } as unknown as Worktree]
+      'repo-1': [
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-1',
+          displayName: 'sytio',
+          branch: 'main'
+        })
+      ]
     },
     folderWorkspaces: [],
     projectGroups: [],
@@ -83,9 +95,14 @@ function seedCards(count: number, statuses: Record<number, 'blocked' | 'working'
     terminalLayoutsByTabId: Object.fromEntries(
       tabs.map((tab, i) => [
         tab.id,
-        { activeLeafId: LEAVES[i], ptyIdsByLeafId: { [LEAVES[i]!]: `pty-${i}` } }
+        {
+          root: null,
+          expandedLeafId: null,
+          activeLeafId: LEAVES[i],
+          ptyIdsByLeafId: { [LEAVES[i]!]: `pty-${i}` }
+        }
       ])
-    ) as never,
+    ),
     agentStatusByPaneKey: Object.fromEntries(
       Object.entries(statuses).map(([index, state]) => {
         const paneKey = `tab-${index}:${LEAVES[Number(index)]}`
@@ -276,8 +293,7 @@ describe('session grid filter and hide', () => {
       onTogglePin: () => {}
     }
     const menu = render(<SortableTabContextMenu {...menuProps} />)
-    const menuItem = (): HTMLElement =>
-      menu.getByTestId('tab-context-menu-grid-visibility') as HTMLElement
+    const menuItem = (): HTMLElement => menu.getByTestId('tab-context-menu-grid-visibility')
 
     expect(menuItem()).toHaveTextContent(sessionGridVisibilityActionLabel(false))
 

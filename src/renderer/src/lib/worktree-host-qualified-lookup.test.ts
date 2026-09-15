@@ -1,3 +1,4 @@
+import { makeWorktree as makeGridTestWorktree } from '@/components/worktree-jump-palette-test-fixtures'
 import { describe, expect, it } from 'vitest'
 import type { AppState } from '@/store/types'
 import type { Worktree } from '../../../shared/worktree/types'
@@ -7,7 +8,15 @@ const WT_ID = 'repo-1::/srv/checkout'
 
 function worktreesByRepo(...rows: Partial<Worktree>[]): AppState['worktreesByRepo'] {
   return {
-    'repo-1': rows.map((row) => ({ id: WT_ID, repoId: 'repo-1', ...row }) as Worktree)
+    'repo-1': rows.map((row) =>
+      makeGridTestWorktree('grid-fixture', '', {
+        branch: '',
+        path: '',
+        id: WT_ID,
+        repoId: 'repo-1',
+        ...row
+      })
+    )
   }
 }
 

@@ -99,7 +99,7 @@ export function SessionGridWorkspacePicker({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           role="combobox"
           aria-expanded={open}
           data-testid="session-grid-workspace-picker"
@@ -109,10 +109,7 @@ export function SessionGridWorkspacePicker({
             'Workspace: {{value0}}',
             { value0: activeFilter === 'all' ? allLabel : (activeOption?.label ?? allLabel) }
           )}
-          className={cn(
-            'h-7 max-w-64 gap-1.5 px-2 text-xs border-border/80 bg-background/50 @max-2xl/toolbar:max-w-none',
-            className
-          )}
+          className={cn('h-7 max-w-64 @max-2xl/toolbar:max-w-none', className)}
         >
           {/* Below 672 px the words go and the icon stands in; the tooltip still names the scope. */}
           <FolderGit2 className="size-3.5 text-muted-foreground @2xl/toolbar:!hidden" />
@@ -139,7 +136,7 @@ export function SessionGridWorkspacePicker({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-72 p-0"
+        className="w-72"
         onOpenAutoFocus={(event) => {
           // Radix would focus the content wrapper; the search box is the real target.
           event.preventDefault()
@@ -155,7 +152,7 @@ export function SessionGridWorkspacePicker({
               'auto.components.session.grid.SessionGridWorkspacePicker.search',
               'Search workspaces…'
             )}
-            className="h-8 text-xs"
+            className="h-8"
           />
           <CommandList className="max-h-80">
             <CommandEmpty>
@@ -171,7 +168,6 @@ export function SessionGridWorkspacePicker({
                 data-testid="session-grid-workspace-option"
                 data-value="all"
                 onSelect={() => select('all')}
-                className="text-xs"
               >
                 <Check className={cn('size-3.5 shrink-0', activeFilter !== 'all' && 'opacity-0')} />
                 <span className="truncate">{allLabel}</span>
@@ -192,7 +188,6 @@ export function SessionGridWorkspacePicker({
                       data-testid="session-grid-workspace-option"
                       data-value={option.id}
                       onSelect={() => select(option.id)}
-                      className="text-xs"
                     >
                       <Check className={cn('size-3.5 shrink-0', !isActive && 'opacity-0')} />
                       <span className="truncate font-medium">

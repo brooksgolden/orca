@@ -73,20 +73,15 @@ export function SessionGridOffscreenAttentionPill({
         <TooltipTrigger asChild>
           <Button
             type="button"
-            variant="ghost"
-            size="sm"
+            variant="outline"
+            size="xs"
             aria-label={label}
             data-testid="session-grid-offscreen-attention"
             data-direction={direction}
             onClick={onClick}
-            className={cn(
-              'pointer-events-auto h-6 gap-1 rounded-full px-2 text-[11px] font-medium',
-              'bg-agent-question/15 text-agent-question-text ring-1 ring-inset ring-agent-question/25',
-              'hover:bg-agent-question/25 hover:text-agent-question-text',
-              'animate-in fade-in-0 duration-150 motion-reduce:animate-none'
-            )}
+            className="pointer-events-auto h-6"
           >
-            <Chevron className="size-3" />
+            <Chevron className="size-3 text-agent-question-text" />
             {count}
           </Button>
         </TooltipTrigger>

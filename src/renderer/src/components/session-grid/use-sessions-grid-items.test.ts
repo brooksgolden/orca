@@ -1,4 +1,10 @@
 // @vitest-environment happy-dom
+import { getDefaultSettings } from '../../../../shared/constants'
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import { makeTerminalTab as makeGridTestTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 import { describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useAppStore } from '@/store'
@@ -26,44 +32,63 @@ describe('useSessionsGridItems', () => {
   })
   it('collects sessions from multiple worktrees and builds filter options', () => {
     const repos: Repo[] = [
-      { id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo,
-      { id: 'repo-2', displayName: 'orca', path: '/code/orca' } as unknown as Repo
+      makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' }),
+      makeGridTestRepo({ id: 'repo-2', displayName: 'orca', path: '/code/orca' })
     ]
 
     const worktreesByRepo: Record<string, Worktree[]> = {
       'repo-1': [
-        { id: 'wt-1', displayName: 'sytio', branch: 'solidez/base' } as unknown as Worktree
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-1',
+          displayName: 'sytio',
+          branch: 'solidez/base'
+        })
       ],
       'repo-2': [
-        { id: 'wt-2', displayName: 'orca-feature', branch: 'feat/grid' } as unknown as Worktree
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-2',
+          displayName: 'orca-feature',
+          branch: 'feat/grid'
+        })
       ]
     }
 
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-1',
           ptyId: 'pty-1',
           worktreeId: 'wt-1',
           title: 'Session',
           createdAt: 100
-        } as TerminalTab,
-        {
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-2',
           ptyId: 'pty-2',
           worktreeId: 'wt-1',
           title: 'Base de conocimiento contrato 21%',
           createdAt: 200
-        } as TerminalTab
+        })
       ],
       'wt-2': [
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-3',
           ptyId: 'pty-3',
           worktreeId: 'wt-2',
           title: 'Term 3',
           createdAt: 300
-        } as TerminalTab
+        })
       ]
     }
 
@@ -111,21 +136,27 @@ describe('useSessionsGridItems', () => {
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
         // Split tab: `tab.ptyId` names the first pane, the layout's active leaf the one in use.
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-split',
           ptyId: 'pty-a',
           worktreeId: 'wt-1',
           title: 'Split',
           createdAt: 1
-        } as TerminalTab,
+        }),
         // Parked after a restart: the layout still names a pty that no longer exists.
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-parked',
           ptyId: 'pty-old',
           worktreeId: 'wt-1',
           title: 'Parked',
           createdAt: 2
-        } as TerminalTab
+        })
       ]
     }
     const leaf = '11111111-1111-4111-8111-111111111111'
@@ -134,9 +165,19 @@ describe('useSessionsGridItems', () => {
       worktreesByRepo: {},
       tabsByWorktree,
       terminalLayoutsByTabId: {
-        'tab-split': { activeLeafId: leaf, ptyIdsByLeafId: { [leaf]: 'pty-b' } },
-        'tab-parked': { activeLeafId: leaf, ptyIdsByLeafId: { [leaf]: 'pty-old' } }
-      } as never,
+        'tab-split': {
+          root: null,
+          expandedLeafId: null,
+          activeLeafId: leaf,
+          ptyIdsByLeafId: { [leaf]: 'pty-b' }
+        },
+        'tab-parked': {
+          root: null,
+          expandedLeafId: null,
+          activeLeafId: leaf,
+          ptyIdsByLeafId: { [leaf]: 'pty-old' }
+        }
+      },
       ptyIdsByTabId: { 'tab-split': ['pty-a', 'pty-b'], 'tab-parked': [] },
       sessionsGridFilter: 'all',
       sessionsGridTabOrder: []
@@ -153,14 +194,26 @@ describe('useSessionsGridItems', () => {
     const leaf = '22222222-2222-4222-8222-222222222222'
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-a',
           ptyId: 'pty-a',
           worktreeId: 'wt-1',
           title: 'A',
           createdAt: 1
-        } as TerminalTab,
-        { id: 'tab-b', ptyId: 'pty-b', worktreeId: 'wt-1', title: 'B', createdAt: 2 } as TerminalTab
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-b',
+          ptyId: 'pty-b',
+          worktreeId: 'wt-1',
+          title: 'B',
+          createdAt: 2
+        })
       ]
     }
     useAppStore.setState({
@@ -169,8 +222,13 @@ describe('useSessionsGridItems', () => {
       tabsByWorktree,
       terminalLayoutsByTabId: {
         // No active leaf yet (layout still hydrating), but the pty is bound to a leaf.
-        'tab-a': { activeLeafId: null, ptyIdsByLeafId: { [leaf]: 'pty-a' } }
-      } as never,
+        'tab-a': {
+          root: null,
+          expandedLeafId: null,
+          activeLeafId: null,
+          ptyIdsByLeafId: { [leaf]: 'pty-a' }
+        }
+      },
       ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
       sessionsGridFilter: 'all',
       sessionsGridTabOrder: []
@@ -188,14 +246,17 @@ describe('useSessionsGridItems', () => {
     const leaf = '33333333-3333-4333-8333-333333333333'
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-h',
           ptyId: 'pty-h',
           worktreeId: 'wt-1',
           title: 'claude',
           launchAgent: 'claude',
           createdAt: 1
-        } as TerminalTab
+        })
       ]
     }
     useAppStore.setState({
@@ -203,11 +264,17 @@ describe('useSessionsGridItems', () => {
       worktreesByRepo: {},
       tabsByWorktree,
       terminalLayoutsByTabId: {
-        'tab-h': { activeLeafId: leaf, ptyIdsByLeafId: { [leaf]: 'pty-h' } }
-      } as never,
+        'tab-h': {
+          root: null,
+          expandedLeafId: null,
+          activeLeafId: leaf,
+          ptyIdsByLeafId: { [leaf]: 'pty-h' }
+        }
+      },
       ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
       agentStatusByPaneKey: {
         [`tab-h:${leaf}`]: {
+          stateHistory: [],
           state: 'blocked',
           agentType: 'claude',
           paneKey: `tab-h:${leaf}`,
@@ -215,7 +282,7 @@ describe('useSessionsGridItems', () => {
           updatedAt: Date.now(),
           stateStartedAt: Date.now()
         }
-      } as never,
+      },
       agentStatusEpoch: 1,
       sessionsGridFilter: 'all',
       sessionsGridTabOrder: []
@@ -228,15 +295,21 @@ describe('useSessionsGridItems', () => {
   it('titles a card the way the tab bar does: quick-command label over the live title', () => {
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-q',
           ptyId: 'pty-q',
           worktreeId: 'wt-1',
           title: 'zsh',
           quickCommandLabel: 'Run tests',
           createdAt: 1
-        } as TerminalTab,
-        {
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 'tab-g',
           ptyId: 'pty-g',
           worktreeId: 'wt-1',
@@ -244,7 +317,7 @@ describe('useSessionsGridItems', () => {
           generatedTitle: 'Fix the flaky spec',
           defaultTitle: 'Terminal 2',
           createdAt: 2
-        } as TerminalTab
+        })
       ]
     }
     useAppStore.setState({
@@ -254,7 +327,7 @@ describe('useSessionsGridItems', () => {
       terminalLayoutsByTabId: {},
       agentStatusByPaneKey: {},
       ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
-      settings: { tabAutoGenerateTitle: false } as never,
+      settings: { ...getDefaultSettings('/tmp'), tabAutoGenerateTitle: false },
       sessionsGridFilter: 'all',
       sessionsGridTabOrder: []
     })
@@ -263,7 +336,9 @@ describe('useSessionsGridItems', () => {
     expect(result.current.items.map((i) => i.title)).toEqual(['Run tests', 'Terminal 2'])
 
     act(() => {
-      useAppStore.setState({ settings: { tabAutoGenerateTitle: true } as never })
+      useAppStore.setState({
+        settings: { ...getDefaultSettings('/tmp'), tabAutoGenerateTitle: true }
+      })
     })
     expect(result.current.items[1]?.title).toBe('Fix the flaky spec')
   })
@@ -271,12 +346,30 @@ describe('useSessionsGridItems', () => {
   it('keeps the worktree catalog identity across a title tick', () => {
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        { id: 'tab-1', ptyId: 'pty-1', worktreeId: 'wt-1', title: 'A', createdAt: 1 } as TerminalTab
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-1',
+          ptyId: 'pty-1',
+          worktreeId: 'wt-1',
+          title: 'A',
+          createdAt: 1
+        })
       ]
     }
     useAppStore.setState({
-      repos: [{ id: 'repo-1', displayName: 'repo', path: '/r' } as unknown as Repo],
-      worktreesByRepo: { 'repo-1': [{ id: 'wt-1', displayName: 'repo' } as unknown as Worktree] },
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'repo', path: '/r' })],
+      worktreesByRepo: {
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            path: '',
+            id: 'wt-1',
+            displayName: 'repo'
+          })
+        ]
+      },
       tabsByWorktree,
       ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
       sessionsGridFilter: 'all',
@@ -301,12 +394,30 @@ describe('useSessionsGridItems', () => {
   it('falls back to ALL when the persisted filter names a workspace that no longer exists', () => {
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        { id: 'tab-1', ptyId: 'pty-1', worktreeId: 'wt-1', title: 'A', createdAt: 1 } as TerminalTab
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-1',
+          ptyId: 'pty-1',
+          worktreeId: 'wt-1',
+          title: 'A',
+          createdAt: 1
+        })
       ]
     }
     useAppStore.setState({
-      repos: [{ id: 'repo-1', displayName: 'repo', path: '/r' } as unknown as Repo],
-      worktreesByRepo: { 'repo-1': [{ id: 'wt-1', displayName: 'repo' } as unknown as Worktree] },
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'repo', path: '/r' })],
+      worktreesByRepo: {
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            path: '',
+            id: 'wt-1',
+            displayName: 'repo'
+          })
+        ]
+      },
       tabsByWorktree,
       ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
       sessionsGridFilter: 'wt-deleted',
@@ -321,22 +432,35 @@ describe('useSessionsGridItems', () => {
 
   it('keeps a live workspace filter with a zero-count chip once its last session closes', () => {
     useAppStore.setState({
-      repos: [{ id: 'repo-1', displayName: 'repo', path: '/r' } as unknown as Repo],
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'repo', path: '/r' })],
       worktreesByRepo: {
         'repo-1': [
-          { id: 'wt-1', displayName: 'repo' } as unknown as Worktree,
-          { id: 'wt-2', displayName: 'quiet' } as unknown as Worktree
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            path: '',
+            id: 'wt-1',
+            displayName: 'repo'
+          }),
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            path: '',
+            id: 'wt-2',
+            displayName: 'quiet'
+          })
         ]
       },
       tabsByWorktree: {
         'wt-1': [
-          {
+          makeGridTestTerminalTab({
+            customTitle: null,
+            color: null,
+            sortOrder: 0,
             id: 'tab-1',
             ptyId: 'pty-1',
             worktreeId: 'wt-1',
             title: 'A',
             createdAt: 1
-          } as TerminalTab
+          })
         ]
       },
       ptyIdsByTabId: { 'tab-1': ['pty-1'] },
@@ -361,17 +485,40 @@ describe('useSessionsGridItems', () => {
     const leaf = '44444444-4444-4444-8444-444444444444'
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        { id: 'tab-q', ptyId: 'pty-q', worktreeId: 'wt-1', title: 'Quiet', createdAt: 1 },
-        { id: 'tab-n', ptyId: 'pty-n', worktreeId: 'wt-1', title: 'Noisy', createdAt: 2 }
-      ] as TerminalTab[]
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-q',
+          ptyId: 'pty-q',
+          worktreeId: 'wt-1',
+          title: 'Quiet',
+          createdAt: 1
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-n',
+          ptyId: 'pty-n',
+          worktreeId: 'wt-1',
+          title: 'Noisy',
+          createdAt: 2
+        })
+      ]
     }
     useAppStore.setState({
       repos: [],
       worktreesByRepo: {},
       tabsByWorktree,
       terminalLayoutsByTabId: {
-        'tab-n': { activeLeafId: leaf, ptyIdsByLeafId: { [leaf]: 'pty-n' } }
-      } as never,
+        'tab-n': {
+          root: null,
+          expandedLeafId: null,
+          activeLeafId: leaf,
+          ptyIdsByLeafId: { [leaf]: 'pty-n' }
+        }
+      },
       ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
       agentStatusByPaneKey: {},
       agentStatusEpoch: 0,
@@ -387,6 +534,7 @@ describe('useSessionsGridItems', () => {
       useAppStore.setState({
         agentStatusByPaneKey: {
           [`tab-n:${leaf}`]: {
+            stateHistory: [],
             state: 'working',
             agentType: 'claude',
             paneKey: `tab-n:${leaf}`,
@@ -394,7 +542,7 @@ describe('useSessionsGridItems', () => {
             updatedAt: Date.now(),
             stateStartedAt: Date.now()
           }
-        } as never,
+        },
         agentStatusEpoch: 1
       })
     })
@@ -406,27 +554,36 @@ describe('useSessionsGridItems', () => {
   it('reads a context percentage only when the title says so', () => {
     const tabsByWorktree: Record<string, TerminalTab[]> = {
       'wt-1': [
-        {
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 't1',
           ptyId: 'p1',
           worktreeId: 'wt-1',
           title: 'Claude — context left 21%',
           createdAt: 1
-        } as TerminalTab,
-        {
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 't2',
           ptyId: 'p2',
           worktreeId: 'wt-1',
           title: '87% context used',
           createdAt: 2
-        } as TerminalTab,
-        {
+        }),
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
           id: 't3',
           ptyId: 'p3',
           worktreeId: 'wt-1',
           title: 'Deploy at 50% rollout',
           createdAt: 3
-        } as TerminalTab
+        })
       ]
     }
     useAppStore.setState({

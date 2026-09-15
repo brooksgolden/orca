@@ -18,7 +18,7 @@ describe('TerminalTabAttentionBadgeGlyph', () => {
   it('renders unread as the amber bell, never an agent dot', () => {
     const html = markup('unread')
 
-    expect(html).toContain('text-amber-500')
+    expect(html).toContain('text-agent-unread')
     expect(html).toContain('<svg')
     expect(html).not.toContain('data-agent-spinner')
     expect(html).not.toContain('lucide-circle-check')
@@ -41,7 +41,7 @@ describe('TerminalTabAttentionBadgeGlyph', () => {
       const html = markup(badge)
 
       expect(html).toContain(marker)
-      expect(html).not.toContain('text-amber-500')
+      expect(html).not.toContain('text-agent-unread')
     }
   )
 

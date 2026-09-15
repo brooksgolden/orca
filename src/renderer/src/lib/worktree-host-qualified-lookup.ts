@@ -21,5 +21,6 @@ export function findWorktreeClaimedByNoHost(
   if (!owner || owner.hostId || owner.runtimeOwnerEnvironmentId?.trim()) {
     return undefined
   }
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: The index returns the original Worktree from state.worktreesByRepo without projection.
   return owner as Worktree
 }

@@ -17,7 +17,7 @@ function setup(initial: SessionGridWheelTarget = 'focus') {
     input.className = 'xterm-helper-textarea'
     element.append(input)
     container.append(element)
-    const delivered = vi.fn()
+    const delivered = vi.fn<(prevented: boolean, event: WheelEvent) => void>()
     element.addEventListener('wheel', (event) => delivered(event.defaultPrevented, event))
     return { element, input, delivered }
   }
@@ -47,7 +47,10 @@ function setup(initial: SessionGridWheelTarget = 'focus') {
   }
 }
 
-function wheel(target: Element, init: Partial<WheelEvent> = {}): WheelEvent {
+function wheel(
+  target: Element,
+  init: Partial<WheelEvent> & { wheelDeltaX?: number; wheelDeltaY?: number } = {}
+): WheelEvent {
   const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 40 })
   Object.defineProperties(
     event,
@@ -200,17 +203,13 @@ describe('grid wheel ownership', () => {
       timeStamp: 1234,
       wheelDeltaX: 120,
       wheelDeltaY: 0
-    } as Partial<WheelEvent>)
-    const delivered = view.a.delivered.mock.calls[0]![1] as WheelEvent & {
-      wheelDeltaY: number
-      wheelDeltaX: number
-    }
+    })
+    const delivered = view.a.delivered.mock.calls[0]![1]
     expect(delivered.deltaY).toBe(-12)
     expect(delivered.deltaX).toBe(0)
     expect(delivered.deltaMode).toBe(1)
     expect(delivered.timeStamp).toBe(1234)
-    expect(delivered.wheelDeltaY).toBe(120)
-    expect(delivered.wheelDeltaX).toBe(0)
+    expect(delivered).toMatchObject({ wheelDeltaY: 120, wheelDeltaX: 0 })
   })
 
   it('removes all routing on disposal', () => {

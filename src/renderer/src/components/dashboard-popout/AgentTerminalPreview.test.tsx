@@ -4,24 +4,26 @@ import '@testing-library/jest-dom/vitest'
 import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+type PreviewTestTerminal = {
+  write: ReturnType<typeof vi.fn>
+  writeCallbacks: (() => void)[]
+  onDataListener: ((data: string) => void) | null
+  dispose: ReturnType<typeof vi.fn>
+  resize: ReturnType<typeof vi.fn>
+  reset: ReturnType<typeof vi.fn>
+  paste: ReturnType<typeof vi.fn>
+  input: ReturnType<typeof vi.fn>
+  scrollToTop: ReturnType<typeof vi.fn>
+  scrollToBottom: ReturnType<typeof vi.fn>
+  selectAll: ReturnType<typeof vi.fn>
+  modes: { bracketedPasteMode: boolean; mouseTrackingMode: string }
+  buffer: { active: { cursorY: number; viewportY: number; baseY: number } }
+  selectionText: string
+  customKeyHandler: ((event: KeyboardEvent) => boolean) | null
+}
+
 const terminalHarness = vi.hoisted(() => ({
-  instances: [] as {
-    write: ReturnType<typeof vi.fn>
-    writeCallbacks: (() => void)[]
-    onDataListener: ((data: string) => void) | null
-    dispose: ReturnType<typeof vi.fn>
-    resize: ReturnType<typeof vi.fn>
-    reset: ReturnType<typeof vi.fn>
-    paste: ReturnType<typeof vi.fn>
-    input: ReturnType<typeof vi.fn>
-    scrollToTop: ReturnType<typeof vi.fn>
-    scrollToBottom: ReturnType<typeof vi.fn>
-    selectAll: ReturnType<typeof vi.fn>
-    modes: { bracketedPasteMode: boolean; mouseTrackingMode: string }
-    buffer: { active: { cursorY: number; viewportY: number; baseY: number } }
-    selectionText: string
-    customKeyHandler: ((event: KeyboardEvent) => boolean) | null
-  }[],
+  instances: new Array<PreviewTestTerminal>(),
   userInputListener: null as (() => void) | null,
   userInputDispose: vi.fn()
 }))
@@ -655,9 +657,8 @@ describe('AgentTerminalPreview', () => {
 
   it('veils the terminal across a resync repaint and lifts it once the replay lands', async () => {
     vi.useFakeTimers()
-    vi.stubGlobal(
-      'requestAnimationFrame',
-      (cb: FrameRequestCallback) => setTimeout(() => cb(0), 16) as unknown as number
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      window.setTimeout(() => cb(0), 16)
     )
     let resolveRefresh!: (value: {
       snapshot: { data: string; cols: number; rows: number; seq: number }
@@ -725,11 +726,11 @@ describe('AgentTerminalPreview', () => {
       </>
     )
     await waitFor(() => expect(terminalHarness.instances).toHaveLength(2))
-    const [first, second] = terminalHarness.instances as [
-      (typeof terminalHarness.instances)[number],
-      (typeof terminalHarness.instances)[number]
-    ]
-    const surfaceIds = connect.mock.calls.map((call) => call[1].surfaceId as string)
+    const [first, second] = terminalHarness.instances
+    if (!first || !second) {
+      throw new Error('Expected two terminal preview fixtures')
+    }
+    const surfaceIds = connect.mock.calls.map((call) => call[1].surfaceId)
     expect(surfaceIds).toHaveLength(2)
     expect(surfaceIds[0]).not.toBe(surfaceIds[1])
     // A grid card and the dialog it opens are distinct surfaces on main.

@@ -1,12 +1,15 @@
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import { makeTerminalTab as makeGridTestTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { buildSessionGridListing, type SessionGridItemsState } from './session-grid-items-builder'
 import { createSessionGridItemReuseCache } from './session-grid-item-reuse-cache'
 import { buildSessionGridWorktreeCatalog } from './session-grid-worktree-catalog'
 import { resetTerminalTabActivityFlagsCacheForTest } from '@/components/tab-bar/terminal-tab-activity-status'
 import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
-import type { Repo } from '../../../../shared/repo-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 
 const LEAF_A = '11111111-1111-4111-8111-111111111111'
 const LEAF_B = '22222222-2222-4222-8222-222222222222'
@@ -14,14 +17,30 @@ const LEAF_C = '33333333-3333-4333-8333-333333333333'
 const LEAF_D = '44444444-4444-4444-8444-444444444444'
 
 const catalog = buildSessionGridWorktreeCatalog({
-  repos: [{ id: 'repo-1', displayName: 'orca', path: '/code/orca' } as unknown as Repo],
+  repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'orca', path: '/code/orca' })],
   worktreesByRepo: {
-    'repo-1': [{ id: 'wt-1', displayName: 'orca', branch: 'main' } as unknown as Worktree]
+    'repo-1': [
+      makeGridTestWorktree('grid-fixture', '', {
+        path: '',
+        id: 'wt-1',
+        displayName: 'orca',
+        branch: 'main'
+      })
+    ]
   }
 })
 
 function tab(id: string, ptyId: string, createdAt: number): TerminalTab {
-  return { id, ptyId, worktreeId: 'wt-1', title: id, createdAt } as TerminalTab
+  return makeGridTestTerminalTab({
+    customTitle: null,
+    color: null,
+    sortOrder: 0,
+    id,
+    ptyId,
+    worktreeId: 'wt-1',
+    title: id,
+    createdAt
+  })
 }
 
 function statusEntry(
@@ -30,13 +49,14 @@ function statusEntry(
   updatedAt: number
 ): AgentStatusEntry {
   return {
+    stateHistory: [],
     paneKey,
     state,
     agentType: 'claude',
     prompt: '',
     updatedAt,
     stateStartedAt: updatedAt
-  } as unknown as AgentStatusEntry
+  }
 }
 
 function workingEntry(paneKey: string, updatedAt: number): AgentStatusEntry {
@@ -59,9 +79,14 @@ function makeBucketState(overrides: Partial<SessionGridItemsState> = {}): Sessio
     terminalLayoutsByTabId: Object.fromEntries(
       Object.entries(leaves).map(([tabId, leaf]) => [
         tabId,
-        { activeLeafId: leaf, ptyIdsByLeafId: { [leaf]: `pty-${tabId.slice(-1)}` } }
+        {
+          root: null,
+          expandedLeafId: null,
+          activeLeafId: leaf,
+          ptyIdsByLeafId: { [leaf]: `pty-${tabId.slice(-1)}` }
+        }
       ])
-    ) as never,
+    ),
     ptyIdsByTabId: {
       'tab-a': ['pty-a'],
       'tab-b': ['pty-b'],
@@ -83,9 +108,19 @@ function makeState(overrides: Partial<SessionGridItemsState> = {}): SessionGridI
     tabsByWorktree: { 'wt-1': [tab('tab-a', 'pty-a', 1), tab('tab-b', 'pty-b', 2)] },
     unifiedTabsByWorktree: {},
     terminalLayoutsByTabId: {
-      'tab-a': { activeLeafId: LEAF_A, ptyIdsByLeafId: { [LEAF_A]: 'pty-a' } },
-      'tab-b': { activeLeafId: LEAF_B, ptyIdsByLeafId: { [LEAF_B]: 'pty-b' } }
-    } as never,
+      'tab-a': {
+        root: null,
+        expandedLeafId: null,
+        activeLeafId: LEAF_A,
+        ptyIdsByLeafId: { [LEAF_A]: 'pty-a' }
+      },
+      'tab-b': {
+        root: null,
+        expandedLeafId: null,
+        activeLeafId: LEAF_B,
+        ptyIdsByLeafId: { [LEAF_B]: 'pty-b' }
+      }
+    },
     ptyIdsByTabId: { 'tab-a': ['pty-a'], 'tab-b': ['pty-b'] },
     agentStatusByPaneKey: {},
     agentStatusEpoch: 0,
@@ -544,25 +579,25 @@ describe('buildSessionGridListing execution hosts', () => {
   it('resolves cold cards against their own host when workspace ids collide', () => {
     const multiHostCatalog = buildSessionGridWorktreeCatalog({
       repos: [
-        { id: 'local', displayName: 'Local project' } as Repo,
-        { id: 'remote', displayName: 'Remote project', connectionId: 'box' } as Repo
+        makeGridTestRepo({ id: 'local', displayName: 'Local project' }),
+        makeGridTestRepo({ id: 'remote', displayName: 'Remote project', connectionId: 'box' })
       ],
       worktreesByRepo: {
         local: [
-          {
+          makeGridTestWorktree('grid-fixture', '', {
             id: 'wt-1',
             displayName: 'Local workspace',
             branch: 'local-branch',
             path: '/local'
-          } as Worktree
+          })
         ],
         remote: [
-          {
+          makeGridTestWorktree('grid-fixture', '', {
             id: 'wt-1',
             displayName: 'Remote workspace',
             branch: 'remote-branch',
             path: '/remote'
-          } as Worktree
+          })
         ]
       },
       sshTargetLabels: new Map([['box', 'build box']])
@@ -607,9 +642,16 @@ describe('buildSessionGridListing execution hosts', () => {
 
   it('stamps every card with the host its workspace runs on', () => {
     const remoteCatalog = buildSessionGridWorktreeCatalog({
-      repos: [{ id: 'repo-1', displayName: 'orca', connectionId: 'box' } as unknown as Repo],
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'orca', connectionId: 'box' })],
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', displayName: 'orca', branch: 'main' } as unknown as Worktree]
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            path: '',
+            id: 'wt-1',
+            displayName: 'orca',
+            branch: 'main'
+          })
+        ]
       },
       sshTargetLabels: new Map([['box', 'build box']])
     })
@@ -632,14 +674,26 @@ describe('buildSessionGridListing execution hosts', () => {
       makeState({
         tabsByWorktree: { 'wt-1': [tab('tab-a', sshPty, 1)] },
         terminalLayoutsByTabId: {
-          'tab-a': { activeLeafId: LEAF_A, ptyIdsByLeafId: { [LEAF_A]: sshPty } }
-        } as never,
+          'tab-a': {
+            root: null,
+            expandedLeafId: null,
+            activeLeafId: LEAF_A,
+            ptyIdsByLeafId: { [LEAF_A]: sshPty }
+          }
+        },
         ptyIdsByTabId: { 'tab-a': [sshPty] }
       }),
       buildSessionGridWorktreeCatalog({
-        repos: [{ id: 'repo-1', displayName: 'orca' } as unknown as Repo],
+        repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'orca' })],
         worktreesByRepo: {
-          'repo-1': [{ id: 'wt-1', displayName: 'orca' } as unknown as Worktree]
+          'repo-1': [
+            makeGridTestWorktree('grid-fixture', '', {
+              branch: '',
+              path: '',
+              id: 'wt-1',
+              displayName: 'orca'
+            })
+          ]
         },
         sshTargetLabels: new Map([['box', 'build box']])
       }),
@@ -659,14 +713,26 @@ describe('buildSessionGridListing execution hosts', () => {
       makeState({
         tabsByWorktree: { 'wt-1': [tab('tab-a', remotePty, 1)] },
         terminalLayoutsByTabId: {
-          'tab-a': { activeLeafId: LEAF_A, ptyIdsByLeafId: { [LEAF_A]: remotePty } }
-        } as never,
+          'tab-a': {
+            root: null,
+            expandedLeafId: null,
+            activeLeafId: LEAF_A,
+            ptyIdsByLeafId: { [LEAF_A]: remotePty }
+          }
+        },
         ptyIdsByTabId: { 'tab-a': [remotePty] }
       }),
       buildSessionGridWorktreeCatalog({
-        repos: [{ id: 'repo-1', displayName: 'orca' } as unknown as Repo],
+        repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'orca' })],
         worktreesByRepo: {
-          'repo-1': [{ id: 'wt-1', displayName: 'orca' } as unknown as Worktree]
+          'repo-1': [
+            makeGridTestWorktree('grid-fixture', '', {
+              branch: '',
+              path: '',
+              id: 'wt-1',
+              displayName: 'orca'
+            })
+          ]
         },
         runtimeEnvironments: [{ id: 'env-1', name: 'studio' }]
       }),
@@ -683,9 +749,16 @@ describe('buildSessionGridListing execution hosts', () => {
   it('keeps the workspace host for a card whose pty names none', () => {
     // A parked or still-spawning card must not lose the badge its workspace earned.
     const remoteCatalog = buildSessionGridWorktreeCatalog({
-      repos: [{ id: 'repo-1', displayName: 'orca', connectionId: 'box' } as unknown as Repo],
+      repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'orca', connectionId: 'box' })],
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', displayName: 'orca' } as unknown as Worktree]
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            path: '',
+            id: 'wt-1',
+            displayName: 'orca'
+          })
+        ]
       },
       sshTargetLabels: new Map([['box', 'build box']])
     })

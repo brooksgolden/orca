@@ -1,4 +1,9 @@
 // @vitest-environment happy-dom
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import { makeTerminalTab as makeGridTestTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '@/store'
@@ -6,10 +11,6 @@ import { launchAgentInNewTab } from '@/lib/launch-agent-in-new-tab'
 import { launchSessionGridTab } from './session-grid-launch-actions'
 import { installAgentIdleWorkingHandlers } from '@/components/terminal-pane/pty-connection/agent-idle-working-handlers'
 import type { ConnectPanePtySession } from '@/components/terminal-pane/pty-connection/connect-pane-pty-session'
-import type { Repo } from '../../../../shared/repo-types'
-import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Worktree } from '../../../../shared/worktree/types'
-import type { ExecutionHostId } from '../../../../shared/execution-host'
 
 /**
  * "Launch in background" means the grid stays where it is. Against mocks that is trivially
@@ -45,17 +46,36 @@ function targetTabIds(): string[] {
 beforeEach(() => {
   useAppStore.setState(initialState, true)
   useAppStore.setState({
-    repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code' } as unknown as Repo],
+    repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code' })],
     worktreesByRepo: {
       'repo-1': [
-        { id: ACTIVE_WT, repoId: 'repo-1', path: '/code/active' } as unknown as Worktree,
-        { id: TARGET_WT, repoId: 'repo-1', path: '/code/target' } as unknown as Worktree
+        makeGridTestWorktree('grid-fixture', '', {
+          branch: '',
+          id: ACTIVE_WT,
+          repoId: 'repo-1',
+          path: '/code/active'
+        }),
+        makeGridTestWorktree('grid-fixture', '', {
+          branch: '',
+          id: TARGET_WT,
+          repoId: 'repo-1',
+          path: '/code/target'
+        })
       ]
     },
     tabsByWorktree: {
       [ACTIVE_WT]: [
-        { id: 'tab-open', ptyId: 'pty-open', worktreeId: ACTIVE_WT, title: 'One', createdAt: 1 }
-      ] as TerminalTab[]
+        makeGridTestTerminalTab({
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          id: 'tab-open',
+          ptyId: 'pty-open',
+          worktreeId: ACTIVE_WT,
+          title: 'One',
+          createdAt: 1
+        })
+      ]
     },
     activeView: 'sessions',
     activeWorktreeId: ACTIVE_WT,
@@ -75,15 +95,15 @@ describe('launching from the session grid', () => {
     (['shell', 'agent'] as const).flatMap((kind) => [
       {
         kind,
-        host: 'ssh:chosen-host' as ExecutionHostId,
+        host: 'ssh:chosen-host' as const,
         runtime: null,
         connection: 'chosen-host'
       },
-      { kind, host: 'local' as ExecutionHostId, runtime: null, connection: null },
+      { kind, host: 'local' as const, runtime: null, connection: null },
       ...(kind === 'shell'
         ? [
-            { kind, host: 'runtime:hub' as ExecutionHostId, runtime: 'hub', connection: null },
-            { kind, host: 'ssh:chosen-host' as ExecutionHostId, runtime: 'hub', connection: null }
+            { kind, host: 'runtime:hub' as const, runtime: 'hub', connection: null },
+            { kind, host: 'ssh:chosen-host' as const, runtime: 'hub', connection: null }
           ]
         : [])
     ])
@@ -129,6 +149,7 @@ describe('launching from the session grid', () => {
         activeWorktreeId: TARGET_WT,
         activeWorkspaceExecutionHostId: host === 'local' ? 'ssh:chosen-host' : 'local'
       })
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: This fixture exercises synchronous host resolution only; it never invokes the installed agent callbacks.
       const session = {
         deps: { tabId, worktreeId: TARGET_WT },
         cacheKey: `${tabId}:pane`

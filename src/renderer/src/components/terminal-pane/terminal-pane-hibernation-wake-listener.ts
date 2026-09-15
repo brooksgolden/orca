@@ -19,7 +19,10 @@ export function installTerminalPaneHibernationWakeListener(args: {
   panePtyBindingsRef: React.RefObject<Map<number, IDisposable>>
 }): () => void {
   const onWakeHibernatedAgents = (event: Event): void => {
-    const detail = (event as CustomEvent<WakeHibernatedAgentsWorktreeDetail>).detail
+    if (!(event instanceof CustomEvent)) {
+      return
+    }
+    const detail: WakeHibernatedAgentsWorktreeDetail = event.detail
     if (
       !detail ||
       detail.worktreeId !== args.worktreeId ||
@@ -28,9 +31,8 @@ export function installTerminalPaneHibernationWakeListener(args: {
       return
     }
     for (const panePtyBinding of args.panePtyBindingsRef.current?.values() ?? []) {
-      const claimKey = (panePtyBinding as IDisposableWithWake).wakeHibernatedAgentIfArmed?.(
-        detail.wokenClaimKeys
-      )
+      const binding: IDisposableWithWake = panePtyBinding
+      const claimKey = binding.wakeHibernatedAgentIfArmed?.(detail.wokenClaimKeys)
       if (claimKey) {
         detail.wokenClaimKeys?.add(claimKey)
       }

@@ -2,11 +2,7 @@ const TERMINAL_WHEEL_REPLAY_PROPERTY = '__orcaPreviewTerminalWheelReplay'
 
 /** A Shift+wheel re-dispatched to xterm without Shift; every surface above the terminal lets it through. */
 export function isTerminalWheelReplay(event: WheelEvent): boolean {
-  return (
-    (event as WheelEvent & { [TERMINAL_WHEEL_REPLAY_PROPERTY]?: true })[
-      TERMINAL_WHEEL_REPLAY_PROPERTY
-    ] === true
-  )
+  return TERMINAL_WHEEL_REPLAY_PROPERTY in event && event[TERMINAL_WHEEL_REPLAY_PROPERTY] === true
 }
 
 /**
@@ -36,11 +32,11 @@ export function replayWheelToTerminal(
     deltaZ: event.deltaZ,
     deltaMode: event.deltaMode
   })
-  const legacy = event as WheelEvent & {
+  const legacy: WheelEvent & {
     wheelDelta?: number
     wheelDeltaX?: number
     wheelDeltaY?: number
-  }
+  } = event
   const wheelDeltaY =
     event.deltaY === 0
       ? legacy.wheelDeltaX || legacy.wheelDeltaY || legacy.wheelDelta

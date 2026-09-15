@@ -222,8 +222,8 @@ export function SessionGridCard({
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="size-6 text-muted-foreground hover:text-foreground"
+                size="icon-xs"
+                className="size-6"
                 data-testid="session-grid-card-hide"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={handleToggleHidden}
@@ -245,8 +245,8 @@ export function SessionGridCard({
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="size-6 text-muted-foreground hover:text-foreground"
+                size="icon-xs"
+                className="size-6"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={handleMaximize}
                 aria-label={translate(
@@ -269,8 +269,8 @@ export function SessionGridCard({
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="size-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                size="icon-xs"
+                className="size-6"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={handleClose}
                 aria-label={translate(

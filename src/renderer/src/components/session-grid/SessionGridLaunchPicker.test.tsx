@@ -1,19 +1,31 @@
 // @vitest-environment happy-dom
+import { getDefaultSettings } from '../../../../shared/constants'
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
 
 import '@testing-library/jest-dom/vitest'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { useAppStore } from '@/store'
-import type { Repo } from '../../../../shared/repo-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 import { buildSessionGridWorktreeCatalog } from './session-grid-worktree-catalog'
 import { SessionGridLaunchPopoverContent } from './SessionGridLaunchPicker'
 
 const harness = vi.hoisted(() => ({
   launchAgentInNewTab: vi.fn((_args: Record<string, unknown>) => ({ tabId: 'tab-new' })),
   backgroundMount: vi.fn(),
-  createTab: vi.fn((_worktreeId: string) => ({ id: 'tab-shell' })),
+  createTab: vi.fn((worktreeId: string) => ({
+    id: 'tab-shell',
+    worktreeId,
+    title: 'Shell',
+    ptyId: null,
+    customTitle: null,
+    color: null,
+    sortOrder: 0,
+    createdAt: 0
+  })),
   onDone: vi.fn()
 }))
 
@@ -91,7 +103,7 @@ function groupHeadings(): string[] {
   )
 }
 
-const SYTIO_REPO = [{ id: 'repo-1', displayName: 'sytio', path: '/s' }] as unknown as Repo[]
+const SYTIO_REPO = [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/s' })]
 
 beforeEach(() => {
   useAppStore.setState({
@@ -103,11 +115,11 @@ beforeEach(() => {
     detectedAgentIds: [],
     remoteDetectedAgentIds: {},
     runtimeDetectedAgentIds: {},
-    settings: { defaultTuiAgent: null, disabledTuiAgents: [] } as never,
-    createTab: harness.createTab as never,
-    ensureDetectedAgents: vi.fn() as never,
-    ensureRemoteDetectedAgents: vi.fn() as never,
-    ensureRuntimeDetectedAgents: vi.fn() as never
+    settings: { ...getDefaultSettings('/tmp'), defaultTuiAgent: null, disabledTuiAgents: [] },
+    createTab: harness.createTab,
+    ensureDetectedAgents: vi.fn(),
+    ensureRemoteDetectedAgents: vi.fn(),
+    ensureRuntimeDetectedAgents: vi.fn()
   })
 })
 
@@ -122,7 +134,7 @@ afterEach(() => {
 describe('SessionGridLaunchPopoverContent', () => {
   it('offers nothing selectable when every repo group is empty', () => {
     const worktreeCatalog = buildSessionGridWorktreeCatalog({
-      worktreesByRepo: { 'repo-1': [] } as unknown as Record<string, Worktree[]>,
+      worktreesByRepo: { 'repo-1': [] },
       repos: SYTIO_REPO
     })
 
@@ -142,15 +154,34 @@ describe('SessionGridLaunchPopoverContent', () => {
     useAppStore.setState({
       repos: SYTIO_REPO,
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', repoId: 'repo-1', displayName: 'sytio', path: '/s' }]
-      } as unknown as Record<string, Worktree[]>,
-      detectedAgentIds: ['claude', 'codex', 'gemini'] as never,
-      settings: { defaultTuiAgent: 'codex', disabledTuiAgents: ['gemini'] } as never
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            id: 'wt-1',
+            repoId: 'repo-1',
+            displayName: 'sytio',
+            path: '/s'
+          })
+        ]
+      },
+      detectedAgentIds: ['claude', 'codex', 'gemini'],
+      settings: {
+        ...getDefaultSettings('/tmp'),
+        defaultTuiAgent: 'codex',
+        disabledTuiAgents: ['gemini']
+      }
     })
     const worktreeCatalog = buildSessionGridWorktreeCatalog({
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', displayName: 'sytio', path: '/s' }]
-      } as unknown as Record<string, Worktree[]>,
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            id: 'wt-1',
+            displayName: 'sytio',
+            path: '/s'
+          })
+        ]
+      },
       repos: SYTIO_REPO
     })
 
@@ -178,15 +209,35 @@ describe('SessionGridLaunchPopoverContent', () => {
   it('leads with the grid’s own workspaces and groups the rest by project, listing each once', () => {
     const worktrees = {
       'repo-1': [
-        { id: 'wt-main', repoId: 'repo-1', displayName: 'main', branch: 'main', path: '/s' },
-        { id: 'wt-feat', repoId: 'repo-1', displayName: 'feat', branch: 'feat', path: '/s-feat' }
+        makeGridTestWorktree('grid-fixture', '', {
+          id: 'wt-main',
+          repoId: 'repo-1',
+          displayName: 'main',
+          branch: 'main',
+          path: '/s'
+        }),
+        makeGridTestWorktree('grid-fixture', '', {
+          id: 'wt-feat',
+          repoId: 'repo-1',
+          displayName: 'feat',
+          branch: 'feat',
+          path: '/s-feat'
+        })
       ],
-      'repo-2': [{ id: 'wt-other', repoId: 'repo-2', displayName: 'other', path: '/o' }]
-    } as unknown as Record<string, Worktree[]>
+      'repo-2': [
+        makeGridTestWorktree('grid-fixture', '', {
+          branch: '',
+          id: 'wt-other',
+          repoId: 'repo-2',
+          displayName: 'other',
+          path: '/o'
+        })
+      ]
+    }
     const repos = [
-      { id: 'repo-1', displayName: 'sytio', path: '/s' },
-      { id: 'repo-2', displayName: 'other', path: '/o' }
-    ] as unknown as Repo[]
+      makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/s' }),
+      makeGridTestRepo({ id: 'repo-2', displayName: 'other', path: '/o' })
+    ]
     useAppStore.setState({ repos, worktreesByRepo: worktrees })
     const worktreeCatalog = buildSessionGridWorktreeCatalog({ worktreesByRepo: worktrees, repos })
 
@@ -212,14 +263,29 @@ describe('SessionGridLaunchPopoverContent', () => {
     useAppStore.setState({
       repos: SYTIO_REPO,
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', repoId: 'repo-1', displayName: 'sytio', path: '/s' }]
-      } as unknown as Record<string, Worktree[]>,
-      detectedAgentIds: ['claude'] as never
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            id: 'wt-1',
+            repoId: 'repo-1',
+            displayName: 'sytio',
+            path: '/s'
+          })
+        ]
+      },
+      detectedAgentIds: ['claude']
     })
     const worktreeCatalog = buildSessionGridWorktreeCatalog({
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', displayName: 'sytio', path: '/s' }]
-      } as unknown as Record<string, Worktree[]>,
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            id: 'wt-1',
+            displayName: 'sytio',
+            path: '/s'
+          })
+        ]
+      },
       repos: SYTIO_REPO
     })
 
@@ -249,27 +315,26 @@ describe('SessionGridLaunchPopoverContent', () => {
    * own row, named, and a launch goes to the host whose row was picked.
    */
   describe('a workspace two hosts publish under the same id', () => {
-    const LOCAL_ROW = { id: 'wt-1', repoId: 'repo-1', displayName: 'sytio', path: '/s' }
-    const SSH_ROW = { ...LOCAL_ROW, hostId: 'ssh:conn-1' }
+    const LOCAL_ROW = makeGridTestWorktree('wt-1', 'sytio', { repoId: 'repo-1', path: '/s' })
+    const SSH_ROW = makeGridTestWorktree('wt-1', 'sytio', { ...LOCAL_ROW, hostId: 'ssh:conn-1' })
 
     function renderBothHosts(gridWorktreeIds: string[] = [], activeFilter = 'all'): void {
       useAppStore.setState({
         repos: [
-          { id: 'repo-1', displayName: 'sytio', path: '/s' },
-          { id: 'repo-1', displayName: 'sytio', path: '/s', connectionId: 'conn-1' }
-        ] as unknown as Repo[],
-        worktreesByRepo: { 'repo-1': [LOCAL_ROW, SSH_ROW] } as unknown as Record<
-          string,
-          Worktree[]
-        >,
-        detectedAgentIds: ['claude'] as never,
-        remoteDetectedAgentIds: { 'conn-1': ['gemini'] } as never
+          makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/s' }),
+          makeGridTestRepo({
+            id: 'repo-1',
+            displayName: 'sytio',
+            path: '/s',
+            connectionId: 'conn-1'
+          })
+        ],
+        worktreesByRepo: { 'repo-1': [LOCAL_ROW, SSH_ROW] },
+        detectedAgentIds: ['claude'],
+        remoteDetectedAgentIds: { 'conn-1': ['gemini'] }
       })
       const worktreeCatalog = buildSessionGridWorktreeCatalog({
-        worktreesByRepo: { 'repo-1': [LOCAL_ROW, SSH_ROW] } as unknown as Record<
-          string,
-          Worktree[]
-        >,
+        worktreesByRepo: { 'repo-1': [LOCAL_ROW, SSH_ROW] },
         repos: SYTIO_REPO,
         sshTargetLabels: new Map([['conn-1', 'build box']])
       })
@@ -364,14 +429,29 @@ describe('SessionGridLaunchPopoverContent', () => {
     useAppStore.setState({
       repos: SYTIO_REPO,
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', repoId: 'repo-1', displayName: 'sytio', path: '/s' }]
-      } as unknown as Record<string, Worktree[]>,
-      detectedAgentIds: ['claude'] as never
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            id: 'wt-1',
+            repoId: 'repo-1',
+            displayName: 'sytio',
+            path: '/s'
+          })
+        ]
+      },
+      detectedAgentIds: ['claude']
     })
     const worktreeCatalog = buildSessionGridWorktreeCatalog({
       worktreesByRepo: {
-        'repo-1': [{ id: 'wt-1', displayName: 'sytio', path: '/s' }]
-      } as unknown as Record<string, Worktree[]>,
+        'repo-1': [
+          makeGridTestWorktree('grid-fixture', '', {
+            branch: '',
+            id: 'wt-1',
+            displayName: 'sytio',
+            path: '/s'
+          })
+        ]
+      },
       repos: SYTIO_REPO
     })
 

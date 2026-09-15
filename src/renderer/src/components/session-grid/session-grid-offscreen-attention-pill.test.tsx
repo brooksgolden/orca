@@ -1,4 +1,8 @@
 // @vitest-environment happy-dom
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
 
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,9 +13,7 @@ import SessionsGridPage from './SessionsGridPage'
 import { livePtyIdsFor } from './session-grid-test-live-ptys'
 import { SESSION_GRID_SCROLL_CONTAINER_ID } from './use-session-grid-scroll'
 import { SESSION_GRID_ROW_GAP_PX } from './session-grid-slot-layout'
-import type { Repo } from '../../../../shared/repo-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 
 vi.mock('@tanstack/react-virtual', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactVirtual>()),
@@ -43,8 +45,8 @@ function stubLayoutMeasurement(): void {
   const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight')
   Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
     configurable: true,
-    get() {
-      return (this as HTMLElement).id === SESSION_GRID_SCROLL_CONTAINER_ID ? CONTAINER_HEIGHT : 0
+    get(this: HTMLElement) {
+      return this.id === SESSION_GRID_SCROLL_CONTAINER_ID ? CONTAINER_HEIGHT : 0
     }
   })
   const originalScrollTo = HTMLElement.prototype.scrollTo
@@ -70,12 +72,15 @@ function scrollContainer(): HTMLElement {
 function seed(unreadTabIndexes: number[], mode: 'row' | 'free' = 'row'): void {
   const tabsByWorktree: Record<string, TerminalTab[]> = {
     'wt-1': Array.from({ length: 12 }, (_, i) => ({
+      customTitle: null,
+      color: null,
+      sortOrder: 0,
       id: `tab-${i}`,
       ptyId: `pty-${i}`,
       worktreeId: 'wt-1',
       title: `Session ${i}`,
       createdAt: i
-    })) as TerminalTab[]
+    }))
   }
   useAppStore.setState({
     activeView: 'sessions',
@@ -89,9 +94,16 @@ function seed(unreadTabIndexes: number[], mode: 'row' | 'free' = 'row'): void {
     sessionsGridStateFilter: 'all',
     sessionsGridTabOrder: [],
     sessionsGridHiddenTabIds: [],
-    repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+    repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
     worktreesByRepo: {
-      'repo-1': [{ id: 'wt-1', displayName: 'sytio', branch: 'main' } as unknown as Worktree]
+      'repo-1': [
+        makeGridTestWorktree('grid-fixture', '', {
+          path: '',
+          id: 'wt-1',
+          displayName: 'sytio',
+          branch: 'main'
+        })
+      ]
     },
     tabsByWorktree,
     ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),

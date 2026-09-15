@@ -134,7 +134,7 @@ export function SessionGridStateCompactMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-44">
-        <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <DropdownMenuLabel>
           {translate('auto.components.session.grid.SessionGridStateControl.group', 'State')}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
@@ -152,7 +152,6 @@ export function SessionGridStateCompactMenu({
               value={filter}
               data-testid="session-grid-state-option"
               data-value={filter}
-              className="gap-2 text-xs"
             >
               <StateGlyph filter={filter} count={stateFilterCount(filter, stateCounts)} />
               <span>{stateFilterLabel(filter)}</span>

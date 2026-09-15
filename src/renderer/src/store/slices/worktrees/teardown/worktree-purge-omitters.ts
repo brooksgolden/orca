@@ -64,13 +64,11 @@ export function createWorktreePurgeOmitters(
     )
   }
   // Preserve list identity when no retired tab appears in grid preferences.
-  const omitTabIdsFromList = (ids: readonly string[]): string[] => {
+  const omitTabIdsFromList = (ids: string[]): string[] => {
     if (!ids) {
       return ids
     }
-    return ids.some((id) => doomedTabIds.has(id))
-      ? ids.filter((id) => !doomedTabIds.has(id))
-      : (ids as string[])
+    return ids.some((id) => doomedTabIds.has(id)) ? ids.filter((id) => !doomedTabIds.has(id)) : ids
   }
   const omitByBrowserWorkspaceId = <T>(obj: Record<string, T>): Record<string, T> =>
     omitRecordKeys(obj, doomedBrowserWorkspaceIds)

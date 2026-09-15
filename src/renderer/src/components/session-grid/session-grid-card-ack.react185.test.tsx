@@ -1,4 +1,9 @@
 // @vitest-environment happy-dom
+import {
+  makeRepo as makeGridTestRepo,
+  makeWorktree as makeGridTestWorktree
+} from '@/components/worktree-jump-palette-test-fixtures'
+import { makeTerminalTab as makeGridTestTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
 
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,9 +15,7 @@ import SessionsGridPage from './SessionsGridPage'
 import { livePtyIdsFor } from './session-grid-test-live-ptys'
 import { makePaneKey } from '../../../../shared/stable-pane-id'
 import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
-import type { Repo } from '../../../../shared/repo-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Worktree } from '../../../../shared/worktree/types'
 
 // happy-dom lays nothing out, so the real virtualizer would report an empty range.
 vi.mock('@tanstack/react-virtual', async (importOriginal) => ({
@@ -56,7 +59,7 @@ function doneEntryStampedAhead(paneKey: string): AgentStatusEntry {
     stateStartedAt: ahead,
     stateHistory: [],
     worktreeId: WT_ID
-  } as unknown as AgentStatusEntry
+  }
 }
 
 /** The app-shell pairing: the grid page plus the scan loop that owns the ack. */
@@ -73,9 +76,27 @@ function GridWithAutoAck(): React.JSX.Element {
 function seed(): void {
   const tabsByWorktree: Record<string, TerminalTab[]> = {
     [WT_ID]: [
-      { id: 'tab-1', ptyId: 'pty-a', worktreeId: WT_ID, title: 'Split', createdAt: 1 },
-      { id: 'tab-2', ptyId: 'pty-c', worktreeId: WT_ID, title: 'Other', createdAt: 2 }
-    ] as TerminalTab[]
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-1',
+        ptyId: 'pty-a',
+        worktreeId: WT_ID,
+        title: 'Split',
+        createdAt: 1
+      }),
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-2',
+        ptyId: 'pty-c',
+        worktreeId: WT_ID,
+        title: 'Other',
+        createdAt: 2
+      })
+    ]
   }
   useAppStore.setState({
     activeView: 'sessions',
@@ -87,17 +108,17 @@ function seed(): void {
     sessionsGridStateFilter: 'all',
     sessionsGridTabOrder: [],
     sessionsGridHiddenTabIds: [],
-    repos: [{ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' } as unknown as Repo],
+    repos: [makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' })],
     worktreesByRepo: {
       'repo-1': [
-        {
+        makeGridTestWorktree('grid-fixture', '', {
           id: WT_ID,
           repoId: 'repo-1',
           path: '/code/sytio/main',
           displayName: 'sytio',
           branch: 'main',
           isUnread: true
-        } as unknown as Worktree
+        })
       ]
     },
     tabsByWorktree,
@@ -115,7 +136,7 @@ function seed(): void {
         expandedLeafId: null,
         ptyIdsByLeafId: { [LEAF_C]: 'pty-c' }
       }
-    } as never,
+    },
     agentStatusByPaneKey: {
       [PANE_A]: doneEntryStampedAhead(PANE_A),
       [SIBLING_PANE]: doneEntryStampedAhead(SIBLING_PANE),
@@ -244,7 +265,7 @@ describe('session-grid card ack (React #185)', () => {
       document
         .querySelector('[data-tab-id="tab-2"] [data-attention-badge] svg')
         ?.getAttribute('class')
-    ).not.toContain('text-amber-500')
+    ).not.toContain('text-agent-unread')
   })
 
   /** A split tab shows one leaf. Acking its siblings would silence turns nobody saw. */
@@ -275,8 +296,17 @@ describe('session-grid card ack (React #185)', () => {
     useAppStore.setState({
       tabsByWorktree: {
         [WT_ID]: [
-          { id: 'tab-2', ptyId: 'pty-c', worktreeId: WT_ID, title: 'Other', createdAt: 2 }
-        ] as TerminalTab[]
+          makeGridTestTerminalTab({
+            customTitle: null,
+            color: null,
+            sortOrder: 0,
+            id: 'tab-2',
+            ptyId: 'pty-c',
+            worktreeId: WT_ID,
+            title: 'Other',
+            createdAt: 2
+          })
+        ]
       },
       agentStatusByPaneKey: { [PANE_C]: doneEntryStampedAhead(PANE_C) },
       unreadAgentCompletionPanes: { [PANE_C]: true },
