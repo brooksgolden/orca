@@ -209,6 +209,20 @@ export class OrcaRuntimeWithSerializeTerminalBufferFromAvailableState extends Or
     return this.serializeHeadlessTerminalBuffer(ptyId, opts)
   }
 
+  protected async serializePreferredRestoredTerminalBuffer(
+    ptyId: string,
+    opts: { scrollbackRows?: number } = {}
+  ) {
+    if (!this.providerSnapshotPreferredPtys.has(ptyId)) {
+      return null
+    }
+    // Pre-attach bytes are only a suffix; older providers can fall back to the renderer.
+    return (
+      (await this.serializeProviderTerminalBuffer(ptyId, opts)) ??
+      (await this.serializeRendererTerminalBuffer(ptyId, opts))
+    )
+  }
+
   async serializeRendererTerminalBuffer(
     ptyId: string,
     opts: { scrollbackRows?: number } = {}

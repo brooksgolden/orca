@@ -12,6 +12,7 @@ import type { PreviewTerminalPasteSource } from './preview-terminal-paste'
 import { installPreviewTerminalKeyHandler } from './preview-terminal-key-handler'
 import { installPreviewTerminalAppMenuClipboard } from './preview-terminal-app-menu-clipboard'
 import { installPreviewTerminalRightClickPaste } from './preview-terminal-right-click-paste'
+import { installTerminalNativeCopyGutterTrim } from '@/components/terminal-pane/terminal-native-copy-gutter'
 import { isWindowsUserAgent } from '@/components/terminal-pane/pane-helpers'
 
 /** Cap on queued user-input signals; a burst beyond this is indistinguishable from a stuck key. */
@@ -39,6 +40,7 @@ export function createPreviewInputInstallers(args: {
   getReplayDepth: () => number
 }): PreviewInputInstallers {
   let imeBridge: PreviewImeBridge | null = null
+  let disposeNativeCopyGutterTrim: (() => void) | null = null
   let disposeKeyHandler: (() => void) | null = null
   let disposeTerminalCompatibility: (() => void) | null = null
   let userInputDisposable: { dispose: () => void } | null = null
@@ -118,6 +120,7 @@ export function createPreviewInputInstallers(args: {
       }
     },
     install: (terminal) => {
+      disposeNativeCopyGutterTrim = installTerminalNativeCopyGutterTrim(terminal).dispose
       installCompatibility(terminal)
       installInputRouting(terminal)
       installImeBridge(terminal)
@@ -132,6 +135,8 @@ export function createPreviewInputInstallers(args: {
       imeBridge = null
       disposeTerminalCompatibility?.()
       disposeTerminalCompatibility = null
+      disposeNativeCopyGutterTrim?.()
+      disposeNativeCopyGutterTrim = null
       disposeKeyHandler?.()
       disposeKeyHandler = null
     }

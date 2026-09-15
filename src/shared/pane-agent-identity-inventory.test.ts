@@ -150,6 +150,7 @@ const INVENTORY: readonly InventoryGroup[] = [
     classification: 'identity-consumer',
     paths: [
       ['mobile/src/session/mobile-terminal-tab-agent.ts', 2],
+      ['src/main/runtime/tui-idle-evidence.ts', 2],
       ['src/renderer/src/lib/open-tab-occupant-agent.ts', 2],
       ['src/renderer/src/lib/use-tab-agent.ts', 3]
     ]
@@ -402,7 +403,7 @@ const DIRECT_SINGLE_SOURCE_SURFACES: readonly {
     marker: 'resolveLeafCloseCopyKind'
   },
   {
-    path: 'src/main/runtime/orchestration/mailbox-pointer-delivery.ts',
+    path: 'src/main/runtime/orchestration/mailbox-pointer-stage.ts',
     classification: 'action-consumer',
     marker: 'isCursorAgentTitle'
   },

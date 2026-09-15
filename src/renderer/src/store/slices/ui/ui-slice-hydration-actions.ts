@@ -52,6 +52,7 @@ import {
 } from '../persisted-ui-write-baseline'
 import {
   hydrateTrustedOrcaHooks,
+  hydrateUnexpectedSignoutDismissal,
   normalizeHydratedVisibleWorkspaceHostIds,
   preserveStringArrayIdentity,
   sanitizeHydratedActiveView,
@@ -68,20 +69,15 @@ import { hydrateSessionGridState } from './ui-slice-session-grid-hydration'
 
 const MAX_LEFT_SIDEBAR_WIDTH = 500
 const MAX_RIGHT_SIDEBAR_WIDTH = 4000
-const DEFAULT_ON_PORTS_STATUS_BAR_ITEM: StatusBarItem = 'ports'
-const DEFAULT_ON_KIMI_STATUS_BAR_ITEM: StatusBarItem = 'kimi'
-const DEFAULT_ON_MINIMAX_STATUS_BAR_ITEM: StatusBarItem = 'minimax'
-const DEFAULT_ON_ANTIGRAVITY_STATUS_BAR_ITEM: StatusBarItem = 'antigravity'
-const DEFAULT_ON_GROK_STATUS_BAR_ITEM: StatusBarItem = 'grok'
 
 function hydrateStatusBarItems(ui: PersistedUIState): StatusBarItem[] {
   let items = migrateStatusBarItems(ui.statusBarItems)
   const defaults = [
-    ['_portsStatusBarDefaultAdded', DEFAULT_ON_PORTS_STATUS_BAR_ITEM],
-    ['_kimiStatusBarDefaultAdded', DEFAULT_ON_KIMI_STATUS_BAR_ITEM],
-    ['_minimaxStatusBarDefaultAdded', DEFAULT_ON_MINIMAX_STATUS_BAR_ITEM],
-    ['_antigravityStatusBarDefaultAdded', DEFAULT_ON_ANTIGRAVITY_STATUS_BAR_ITEM],
-    ['_grokStatusBarDefaultAdded', DEFAULT_ON_GROK_STATUS_BAR_ITEM]
+    ['_portsStatusBarDefaultAdded', 'ports'],
+    ['_kimiStatusBarDefaultAdded', 'kimi'],
+    ['_minimaxStatusBarDefaultAdded', 'minimax'],
+    ['_antigravityStatusBarDefaultAdded', 'antigravity'],
+    ['_grokStatusBarDefaultAdded', 'grok']
   ] as const
   for (const [flag, item] of defaults) {
     if (!ui[flag] && !items.includes(item)) {
@@ -187,6 +183,7 @@ export function createUiHydrationActions(set: UISliceSet, _get: UISliceGet): Par
           ),
           agentsShowChildAgents: ui.agentsShowChildAgents === true,
           agentsCompactMode: ui.agentsCompactMode !== false,
+          agentsShowSearch: ui.agentsShowSearch !== false,
           agentsReadFilter: normalizeThreadReadFilter(ui.agentsReadFilter),
           agentsGroupBy: normalizeActivityGroupBy(ui.agentsGroupBy),
           collapsedGroups: new Set(ui.collapsedGroups ?? []),
@@ -226,6 +223,7 @@ export function createUiHydrationActions(set: UISliceSet, _get: UISliceGet): Par
             return DEFAULT_PET_ID
           })(),
           dismissedUpdateVersion: ui.dismissedUpdateVersion ?? null,
+          ...hydrateUnexpectedSignoutDismissal(s, ui.dismissedUnexpectedSignoutVersion),
           // Why: a persisted value from a build that knew a different channel set
           // would otherwise survive as-is; activeChannel only falls back on null,
           // so an unknown string reaches listBuilds and the segmented control.

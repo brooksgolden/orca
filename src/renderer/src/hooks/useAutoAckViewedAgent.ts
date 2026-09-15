@@ -1,17 +1,35 @@
+import { resolveAutoAckTabTargets } from './agent-auto-ack-targets'
+export { resolveAutoAckTabTargets, type AutoAckTabTarget } from './agent-auto-ack-targets'
 import { useEffect, useRef } from 'react'
-import { useAppStore } from '@/store'
-import { FLOATING_TERMINAL_WORKTREE_ID } from '../../../shared/constants'
-import { makePaneKey } from '../../../shared/stable-pane-id'
 import {
-  acknowledgeViewedAgentAttention,
-  computeAutoAckTargets,
+  createAutoAckPresenceCheck,
+  subscribeAutoAckPresenceSignals
+} from './agent-auto-ack-presence'
+import { useAppStore } from '@/store'
+import { isWebClientLocation } from '@/lib/web-client-location'
+import { FLOATING_TERMINAL_WORKTREE_ID } from '../../../shared/constants'
+import { readAgentAttentionUnreadReason } from '@/attention/agent-attention-contract'
+import { createTerminalAttentionSurface } from '@/components/terminal-pane/terminal-attention-surface'
+import {
+  applyAgentAttentionAcknowledgement,
+  computeAgentAcknowledgementTargets,
   computeLapsedManualUnreadProtections,
-  computeViewedAgentCompletionPaneKey,
-  getAgentTurnTimestamp,
-  resolveActiveLeafId,
-  resolveAutoAckTabTargets,
-  shouldClearViewedAgentWorktreeUnread
-} from './viewed-agent-attention-targets'
+  readAgentAttentionTurnStartedAt,
+  resolveViewedUnreadSubjectKey,
+  shouldClearWorkspaceAttention,
+  type AgentAttentionTurnRecords
+} from '@/attention/agent-attention-acknowledgement'
+
+type StoreSnapshot = ReturnType<typeof useAppStore.getState>
+
+/** Subject-keyed view of the store's turn bookkeeping for the neutral acknowledgement policy. */
+function readTurnRecords(state: StoreSnapshot): AgentAttentionTurnRecords {
+  return {
+    liveTurns: state.agentStatusByPaneKey,
+    retainedTurns: state.retainedAgentsByPaneKey,
+    acknowledgedTurnStartedAt: state.acknowledgedAgentsByPaneKey
+  }
+}
 
 // Auto-ack an agent row as "seen" when the user is already on its tab, so the dashboard/Dock don't stay bold for an event they watched happen.
 // Scans live + retained maps: Codex's title-revert (pty-connection.ts:onAgentExited) migrates `done` rows to retained mid-race — see docs/codex-agent-row-bold-stuck.md.
@@ -36,7 +54,11 @@ export function useAutoAckViewedAgent(floatingPanelVisible: boolean): void {
     let lastUnreadTerminalTabs: unknown = undefined
 
     // `force` re-scans after a signal the store never sees: panel open/closed is React-local state.
-    const maybeAck = (options?: { force?: boolean }): void => {
+    const presence = createAutoAckPresenceCheck(
+      async () => window.api?.notifications?.getDesktopAwayState?.(),
+      () => maybeAck({ force: true, presenceConfirmed: true })
+    )
+    const maybeAck = (options?: { force?: boolean; presenceConfirmed?: boolean }): void => {
       const s = useAppStore.getState()
       const floatingWorkspaceActiveTabId =
         s.activeTabIdByWorktree[FLOATING_TERMINAL_WORKTREE_ID] ?? null
@@ -63,6 +85,18 @@ export function useAutoAckViewedAgent(floatingPanelVisible: boolean): void {
         return
       }
 
+      // Presence signals force a rescan; unrelated writes must not retry an away result.
+      lastActiveView = s.activeView
+      lastActiveTabId = s.activeTabId
+      lastActiveSessionGridTabId = s.activeSessionGridTabId
+      lastUnreadTerminalTabs = s.unreadTerminalTabs
+      lastFloatingWorkspaceActiveTabId = floatingWorkspaceActiveTabId
+      lastAgentStatus = s.agentStatusByPaneKey
+      lastRetained = s.retainedAgentsByPaneKey
+      lastAcknowledged = s.acknowledgedAgentsByPaneKey
+      lastLayouts = s.terminalLayoutsByTabId
+      lastUnreadAgentCompletionPanes = s.unreadAgentCompletionPanes
+
       // Why: tab-active only proxies "seen"; gate on window visible+focused so away-time transitions don't silently clear the bold signal.
       if (typeof document !== 'undefined') {
         if (document.visibilityState !== 'visible') {
@@ -75,34 +109,47 @@ export function useAutoAckViewedAgent(floatingPanelVisible: boolean): void {
       const targets = resolveAutoAckTabTargets(s, {
         floatingPanelVisible: floatingPanelVisibleRef.current
       })
+      const surface = createTerminalAttentionSurface(s)
       // Why no protection reset here: zero targets just means nothing is on screen
       // (Settings, browser, an overlay) — a transient view switch must not lapse an
       // explicit mark-unread the user just made.
       if (targets.length === 0) {
         return
       }
-      // Why: advance refs only after gates pass, else the diff is consumed and a gated-out transition never re-acks when focus returns.
-      lastActiveView = s.activeView
-      lastActiveTabId = s.activeTabId
-      lastActiveSessionGridTabId = s.activeSessionGridTabId
-      lastFloatingWorkspaceActiveTabId = floatingWorkspaceActiveTabId
-      lastAgentStatus = s.agentStatusByPaneKey
-      lastRetained = s.retainedAgentsByPaneKey
-      lastAcknowledged = s.acknowledgedAgentsByPaneKey
-      lastLayouts = s.terminalLayoutsByTabId
-      lastUnreadAgentCompletionPanes = s.unreadAgentCompletionPanes
-      lastUnreadTerminalTabs = s.unreadTerminalTabs
-
-      const activePaneKeys = new Set<string>()
-      for (const target of targets) {
-        const activeLeafId = resolveActiveLeafId(s, target.tabId)
-        if (activeLeafId) {
-          activePaneKeys.add(makePaneKey(target.tabId, activeLeafId))
+      // Browsers have no native idle capability; their visible/focused gates still apply.
+      if (!options?.presenceConfirmed && !isWebClientLocation()) {
+        const records = readTurnRecords(s)
+        const hasAttention = targets.some(({ tabId }) => {
+          const subjectKey = surface.resolveViewedSubjectKey(tabId)
+          return (
+            readAgentAttentionUnreadReason(s.unreadTerminalTabs[tabId]) !== null ||
+            computeAgentAcknowledgementTargets(records, subjectKey).length > 0 ||
+            resolveViewedUnreadSubjectKey(s.unreadAgentCompletionPanes, subjectKey) !== null
+          )
+        })
+        if (hasAttention) {
+          presence.request()
+          return
         }
       }
-      // Protection lapses when the user moves on to another pane or the agent takes a new
-      // turn; a still-active pane with an unchanged turn keeps its explicit mark-unread.
-      const lapsedProtections = computeLapsedManualUnreadProtections(s, activePaneKeys)
+
+      const activeSubjectKeys = new Set<string>()
+      for (const target of targets) {
+        const subjectKey = surface.resolveViewedSubjectKey(target.tabId)
+        if (subjectKey) {
+          activeSubjectKeys.add(subjectKey)
+        }
+      }
+      // Protection lapses when the user moves on to another subject or the agent takes a new
+      // turn; a still-active subject with an unchanged turn keeps its explicit mark-unread.
+      const lapsedProtections = computeLapsedManualUnreadProtections(
+        {
+          liveTurns: s.agentStatusByPaneKey,
+          retainedTurns: s.retainedAgentsByPaneKey,
+          manuallyUnreadTurnStartedAt: s.manuallyUnreadTurnsByPaneKey
+        },
+        activeSubjectKeys
+      )
       if (lapsedProtections.length > 0) {
         s.clearManuallyUnreadTurns(lapsedProtections)
       }
@@ -111,34 +158,49 @@ export function useAutoAckViewedAgent(floatingPanelVisible: boolean): void {
         // Why re-read: acking target[0] writes to the store, which re-enters this scan synchronously
         // and may already have handled target[1]; `s` is a pre-write snapshot that would re-ack it.
         const current = useAppStore.getState()
-        const tabId = target.tabId
-        const activeLeafId = resolveActiveLeafId(current, tabId)
-        const toAck = computeAutoAckTargets(current, tabId, activeLeafId).filter(
-          (paneKey) =>
-            current.manuallyUnreadTurnsByPaneKey[paneKey] !==
-            getAgentTurnTimestamp(current, paneKey)
+        const currentSurface = createTerminalAttentionSurface(current)
+        const currentRecords = readTurnRecords(current)
+        const groupId = target.tabId
+        const subjectKey = currentSurface.resolveViewedSubjectKey(groupId)
+        const toAck = computeAgentAcknowledgementTargets(currentRecords, subjectKey).filter(
+          (key) =>
+            current.manuallyUnreadTurnsByPaneKey[key] !==
+            readAgentAttentionTurnStartedAt(currentRecords, key)
         )
-        const activePaneKey = computeViewedAgentCompletionPaneKey(current, tabId, activeLeafId)
-        const hasTabUnread = current.unreadTerminalTabs[tabId] === true
-        if (toAck.length > 0 || activePaneKey || hasTabUnread) {
-          const paneKeysToClear = new Set(toAck)
-          if (activePaneKey) {
-            paneKeysToClear.add(activePaneKey)
+        const viewedUnreadSubjectKey = resolveViewedUnreadSubjectKey(
+          current.unreadAgentCompletionPanes,
+          subjectKey
+        )
+        const hasGroupUnread =
+          readAgentAttentionUnreadReason(current.unreadTerminalTabs[groupId]) !== null
+        if (toAck.length > 0 || viewedUnreadSubjectKey || hasGroupUnread) {
+          const clearedSubjectKeys = new Set(toAck)
+          if (viewedUnreadSubjectKey) {
+            clearedSubjectKeys.add(viewedUnreadSubjectKey)
           }
-          const worktreeId = target.worktreeId
-          acknowledgeViewedAgentAttention(current, {
-            activeWorktreeId: shouldClearViewedAgentWorktreeUnread(current, {
-              activeWorktreeId: worktreeId,
-              activeTabId: tabId,
-              paneKeysToClear
-            })
-              ? worktreeId
-              : null,
-            activeTabId: tabId,
-            paneKeys: toAck,
-            activePaneKey,
-            hasTabUnread
-          })
+          const workspaceId = target.worktreeId
+          applyAgentAttentionAcknowledgement(
+            {
+              acknowledgeSubjects: current.acknowledgeAgents,
+              clearWorkspaceUnread: current.clearWorktreeUnread,
+              clearGroupUnread: current.clearTerminalTabUnread,
+              clearSubjectUnread: current.clearTerminalPaneUnread
+            },
+            {
+              workspaceIdToClear:
+                workspaceId !== null &&
+                shouldClearWorkspaceAttention(
+                  currentSurface.collectWorkspaceAttentionRemainder(workspaceId),
+                  { viewedGroupId: groupId, clearedSubjectKeys }
+                )
+                  ? workspaceId
+                  : null,
+              viewedGroupId: groupId,
+              subjectKeys: toAck,
+              viewedUnreadSubjectKey,
+              hasGroupUnread
+            }
+          )
         }
       }
     }
@@ -147,16 +209,15 @@ export function useAutoAckViewedAgent(floatingPanelVisible: boolean): void {
     maybeAck()
     // Subscribe to all store changes; the ref-equality guard above skips unrelated updates.
     const unsubscribe = useAppStore.subscribe(() => maybeAck())
-    // Why: focus/visibility don't flow through zustand, so re-run the scan on these DOM events when focus returns.
-    const onVisibility = (): void => maybeAck()
-    const onFocus = (): void => maybeAck()
-    document.addEventListener('visibilitychange', onVisibility)
-    window.addEventListener('focus', onFocus)
+    const stopPresenceSignals = subscribeAutoAckPresenceSignals(
+      () => maybeAck({ force: true }),
+      () => maybeAck({ force: true, presenceConfirmed: true })
+    )
     return () => {
+      presence.dispose()
       rescanRef.current = null
       unsubscribe()
-      document.removeEventListener('visibilitychange', onVisibility)
-      window.removeEventListener('focus', onFocus)
+      stopPresenceSignals()
     }
   }, [])
 

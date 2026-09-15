@@ -162,6 +162,7 @@ describe('session-grid card ack (React #185)', () => {
     })
     vi.stubGlobal('cancelAnimationFrame', () => {})
     vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    vi.stubGlobal('__ORCA_WEB_CLIENT__', true)
     useAppStore.setState(initialState, true)
     seed()
   })
@@ -343,7 +344,7 @@ describe('session-grid card ack (React #185)', () => {
 
     // A parked pane rings while its card is the selected one.
     act(() => {
-      useAppStore.getState().markTerminalTabUnread('tab-2')
+      useAppStore.getState().markTerminalTabUnread('tab-2', 'terminal-bell')
     })
 
     expect(useAppStore.getState().unreadTerminalTabs['tab-2']).toBeUndefined()
