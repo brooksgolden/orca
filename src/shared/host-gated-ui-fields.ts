@@ -56,7 +56,7 @@ export function isHostGatedUiField(key: string): key is HostGatedUiField {
   return HOST_GATED_UI_FIELD_SET.has(key)
 }
 
-export function hasHostGatedUiFields(update: object): boolean {
+export function hasHostGatedUiFields(update: Partial<PersistedUIState>): boolean {
   return Object.keys(update).some(isHostGatedUiField)
 }
 

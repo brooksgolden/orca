@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { terminalHarness } from './preview-terminal-input-test-harness'
+import { terminalHarness } from './__mocks__/preview-terminal-input'
 import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AgentTerminalPreview } from './AgentTerminalPreview'

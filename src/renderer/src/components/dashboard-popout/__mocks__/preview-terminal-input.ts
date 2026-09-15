@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-vi.mock('./preview-terminal-links', () => ({
+vi.mock('../preview-terminal-links', () => ({
   installPreviewTerminalLinks: () => vi.fn()
 }))
 
@@ -32,13 +32,13 @@ type ImeForwarder = {
 const terminalHarness = vi.hoisted(
   (): {
     instances: PreviewTestTerminal[]
-    userInputListeners: WeakMap<object, () => void>
+    userInputListeners: WeakMap<PreviewTestTerminal, () => void>
     userInputDispose: Mock
   } => {
     const instances: PreviewTestTerminal[] = []
     return {
       instances,
-      userInputListeners: new WeakMap<object, () => void>(),
+      userInputListeners: new WeakMap<PreviewTestTerminal, () => void>(),
       userInputDispose: vi.fn()
     }
   }
@@ -112,7 +112,7 @@ vi.mock(import('@/lib/pane-manager/pane-terminal-options'), async (importOrigina
   buildDefaultTerminalOptions: () => ({})
 }))
 vi.mock('@/components/terminal-pane/terminal-user-input-signal', () => ({
-  subscribeToTerminalUserInput: (terminal: object, listener: () => void) => {
+  subscribeToTerminalUserInput: (terminal: PreviewTestTerminal, listener: () => void) => {
     terminalHarness.userInputListeners.set(terminal, listener)
     return { dispose: terminalHarness.userInputDispose }
   }

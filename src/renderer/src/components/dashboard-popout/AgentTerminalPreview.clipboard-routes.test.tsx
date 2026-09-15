@@ -19,7 +19,7 @@ import {
   platformState,
   storeState,
   imeHarness
-} from './preview-terminal-input-test-harness'
+} from './__mocks__/preview-terminal-input'
 
 import { AgentTerminalPreview } from './AgentTerminalPreview'
 
