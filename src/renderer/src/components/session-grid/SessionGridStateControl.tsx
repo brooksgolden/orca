@@ -12,7 +12,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { cn } from '@/lib/utils'
 import { FilterOptionCount } from '../dashboard-popout/FilterOptionCount'
 import { agentStateLabel } from '../dashboard-popout/agent-dashboard-filter-options'
 import type { SessionGridBucketCounts } from './session-grid-items-builder'
@@ -67,82 +66,37 @@ type SessionGridStateControlProps = {
   className?: string
 }
 
-/**
- * The state axis as one segmented control: single-choice, so one piece and not five chips,
- * and the fleet's glance value, so it carries the glyph and the count in every width. The
- * word is what goes first when the toolbar narrows — `@max-4xl/toolbar` is the toolbar's own
- * container, so the collapse follows the space the sidebar leaves, not the window. 896 px is
- * where the full row (icons, picker, five labelled segments, pager, view) stops fitting.
- */
-export function SessionGridStateSegments({
+/** Attention remains one click away while the menu holds the complete state list. */
+export function SessionGridAttentionButton({
   stateCounts,
-  activeStateFilter,
-  className
+  activeStateFilter
 }: SessionGridStateControlProps): React.JSX.Element {
   const setSessionsGridStateFilter = useAppStore((s) => s.setSessionsGridStateFilter)
+  const active = activeStateFilter === 'attention'
+  const label = stateFilterLabel('attention')
   return (
-    <div
-      role="group"
-      aria-label={translate('auto.components.session.grid.SessionGridStateControl.group', 'State')}
-      className={cn(
-        'inline-flex h-7 shrink-0 items-stretch overflow-hidden rounded-md border border-border/80 bg-background/50',
-        className
-      )}
-    >
-      {SESSION_GRID_STATE_FILTERS.map((filter) => {
-        const isActive = activeStateFilter === filter
-        const count = stateFilterCount(filter, stateCounts)
-        const label = stateFilterLabel(filter)
-        // The word leaves the segment under 896 px; the tooltip is what names the glyph then.
-        return (
-          <Tooltip key={filter}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                data-testid="session-grid-state-chip"
-                data-value={filter}
-                data-current={isActive ? 'true' : undefined}
-                aria-pressed={isActive}
-                aria-label={`${label} ${count}`}
-                onClick={() => setSessionsGridStateFilter(filter)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 border-r border-border/60 px-2 text-xs transition-colors last:border-r-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring',
-                  isActive
-                    ? 'bg-accent font-medium text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                )}
-              >
-                <StateGlyph filter={filter} count={count} />
-                {/* Baseline-aligned: box-centering an 11px count beside 12px text lifts it a third of a pixel. */}
-                <span className="inline-flex items-baseline gap-1.5">
-                  <span className={cn(filter !== 'all' && '@max-4xl/toolbar:!hidden')}>
-                    {label}
-                  </span>
-                  <span
-                    className={cn(
-                      'text-[11px] tabular-nums',
-                      count === 0 && !isActive && 'opacity-50'
-                    )}
-                  >
-                    {count}
-                  </span>
-                </span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6}>
-              {label}
-            </TooltipContent>
-          </Tooltip>
-        )
-      })}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={active ? 'secondary' : 'ghost'}
+          size="xs"
+          data-testid="session-grid-attention"
+          aria-label={`${label} ${stateCounts.attention}`}
+          aria-pressed={active}
+          onClick={() => setSessionsGridStateFilter(active ? 'all' : 'attention')}
+        >
+          <StateGlyph filter="attention" count={stateCounts.attention} />
+          <span className="@max-xl/toolbar:!hidden">{label}</span>
+          <span className="tabular-nums">{stateCounts.attention}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={6}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
-/**
- * The same axis folded into one button for the narrow toolbar, under 576 px: shows the
- * active state, opens the list. Same order, same labels, same counts.
- */
 export function SessionGridStateCompactMenu({
   stateCounts,
   activeStateFilter,
@@ -155,14 +109,14 @@ export function SessionGridStateCompactMenu({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           data-testid="session-grid-state-compact"
           aria-label={translate(
             'auto.components.session.grid.SessionGridStateControl.compactLabel',
             'State: {{value0}}',
             { value0: activeLabel }
           )}
-          className={cn('h-7 gap-1.5 px-2 text-xs border-border/80 bg-background/50', className)}
+          className={className}
         >
           <StateGlyph
             filter={activeStateFilter}
@@ -185,7 +139,12 @@ export function SessionGridStateCompactMenu({
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={activeStateFilter}
-          onValueChange={(value) => setSessionsGridStateFilter(value as SessionGridStateFilter)}
+          onValueChange={(value) => {
+            const filter = SESSION_GRID_STATE_FILTERS.find((candidate) => candidate === value)
+            if (filter) {
+              setSessionsGridStateFilter(filter)
+            }
+          }}
         >
           {SESSION_GRID_STATE_FILTERS.map((filter) => (
             <DropdownMenuRadioItem

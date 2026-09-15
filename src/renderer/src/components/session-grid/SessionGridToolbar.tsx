@@ -11,7 +11,7 @@ import type {
 import type { SessionGridBucketCounts, SessionGridFilterOption } from './session-grid-items-builder'
 import type { SessionGridWorktreeCatalog } from './session-grid-worktree-catalog'
 import { SessionGridLaunchPopoverContent } from './SessionGridLaunchPicker'
-import { SessionGridStateCompactMenu, SessionGridStateSegments } from './SessionGridStateControl'
+import { SessionGridStateCompactMenu, SessionGridAttentionButton } from './SessionGridStateControl'
 import { SessionGridViewMenu, SessionGridZoomStepper } from './SessionGridViewMenu'
 import { SessionGridWorkspacePicker } from './SessionGridWorkspacePicker'
 import { translate } from '@/i18n/i18n'
@@ -33,28 +33,7 @@ type SessionGridToolbarProps = {
   onBack: () => void
 }
 
-/**
- * One row, never scrolled. Scope and state on the left because together they are one
- * query ("in orca / main, the ones Working"); pager, zoom and the view menu on the right.
- *
- * The row is its own `@container/toolbar`, so every collapse below keys on the space the
- * sidebar leaves it and not on the window. Every collapse is a `max` variant with `!hidden`,
- * the spelling task-page-jira-sort-controls and IssueList already use: react-grab's dev
- * stylesheet ships its own Tailwind utilities in the same layer and loads after main.css, so
- * a plain layered `hidden`/`inline-flex` pair loses to it by source order in `pn dev`. The thresholds come from measuring the content,
- * not from round numbers: the zoom stepper goes first, under 1024 px; the segment labels
- * under 896 px, where the full row stops fitting with the longest catalog in use; the two
- * wordy buttons drop to icons under 672 px; under 576 px, where five glyph-and-count
- * segments stop fitting, the segmented control folds into one dropdown; and under 384 px
- * that dropdown's own count and chevron go, which is what a 600 px window with the sidebar
- * open (320 px left) needs. Nothing is lost on the way down — what leaves the row already
- * has a copy in a menu.
- *
- * Memoized on purpose: the page re-renders on every agent-status burst through its own
- * store bundles, and without this the whole toolbar re-rendered ~30 times a second with
- * identical content. The memo only pays off because the builder hands back the same
- * `filterOptions` and `stateCounts` objects when nothing moved; the two halves are one fix.
- */
+/** Container queries keep scope, state and attention reachable beside the pager at narrow widths. */
 export const SessionGridToolbar = memo(function SessionGridToolbar({
   filterOptions,
   activeFilter,
@@ -145,15 +124,13 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
           worktreeCatalog={worktreeCatalog}
         />
 
-        <SessionGridStateSegments
-          stateCounts={stateCounts}
-          activeStateFilter={activeStateFilter}
-          className="@max-xl/toolbar:!hidden"
-        />
         <SessionGridStateCompactMenu
           stateCounts={stateCounts}
           activeStateFilter={activeStateFilter}
-          className="@xl/toolbar:!hidden"
+        />
+        <SessionGridAttentionButton
+          stateCounts={stateCounts}
+          activeStateFilter={activeStateFilter}
         />
       </div>
 

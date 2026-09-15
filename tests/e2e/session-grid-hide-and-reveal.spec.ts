@@ -17,7 +17,7 @@ const CARD = '[data-testid="session-grid-card"]'
 const HIDE_BUTTON = '[data-testid="session-grid-card-hide"]'
 const VIEW_MENU = '[data-testid="session-grid-view-menu"]'
 const REVEAL_HIDDEN = '[data-testid="session-grid-reveal-hidden"]'
-const STATE_CHIP = '[data-testid="session-grid-state-chip"]'
+const STATE_OPTION = '[data-testid="session-grid-state-option"]'
 const EMPTY_STATE = '[data-testid="session-grid-empty-state"]'
 const CLEAR_FILTERS = '[data-testid="session-grid-empty-clear-filters"]'
 const REVEAL_FROM_EMPTY = '[data-testid="session-grid-empty-reveal-hidden"]'
@@ -110,7 +110,8 @@ test.describe('session grid hide and reveal', () => {
       expect(await readHiddenCountFromMenu(page)).toBe('2')
 
       // The state axis reduces the same list: these are bare shells, so nothing is working.
-      await page.locator(`${STATE_CHIP}[data-value="working"]`).click()
+      await page.getByTestId('session-grid-state-compact').click()
+      await page.locator(`${STATE_OPTION}[data-value="working"]`).click()
       await expect(page.locator(CARD)).toHaveCount(0)
       // Zero cards is three different situations, and this one is not "no sessions": four are
       // open, two of them on the grid. The screen has to say so and offer the way back —

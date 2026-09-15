@@ -130,12 +130,6 @@ function openRevealItem(): HTMLElement {
   return screen.getByTestId('session-grid-reveal-hidden')
 }
 
-function stateChip(bucket: string): HTMLElement {
-  return screen
-    .getAllByTestId('session-grid-state-chip')
-    .find((chip) => chip.getAttribute('data-value') === bucket)!
-}
-
 describe('session grid filter and hide', () => {
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -159,17 +153,35 @@ describe('session grid filter and hide', () => {
     expect(renderedTabIds()).toHaveLength(4)
     expect(gridColumns()).toBe(2)
     expect(screen.getAllByTestId('session-grid-empty-slot')).toHaveLength(2)
-    expect(stateChip('all')).toHaveAttribute('data-current', 'true')
+    expect(screen.getByTestId('session-grid-state-compact')).toHaveTextContent('All')
 
-    fireEvent.click(stateChip('working'))
+    fireEvent.pointerDown(screen.getByTestId('session-grid-state-compact'), { button: 0 })
+    fireEvent.click(
+      screen
+        .getAllByTestId('session-grid-state-option')
+        .find((item) => item.dataset.value === 'working')!
+    )
 
     // One card left, so the preset resolves to a single column: the slot counts and
     // the preset both derive from `items.length`, and the state axis feeds it.
     expect(renderedTabIds()).toEqual(['tab-1'])
     expect(gridColumns()).toBe(1)
     expect(screen.getAllByTestId('session-grid-empty-slot')).toHaveLength(1)
-    expect(stateChip('working')).toHaveAttribute('data-current', 'true')
-    expect(stateChip('all')).not.toHaveAttribute('data-current')
+    expect(screen.getByTestId('session-grid-state-compact')).toHaveTextContent('Working')
+    expect(screen.getByTestId('session-grid-attention')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('keeps attention directly accessible and toggles back to all sessions', () => {
+    seedCards(4, { 0: 'blocked', 1: 'working', 2: 'done' })
+    render(<SessionsGridPage />)
+    const attention = screen.getByTestId('session-grid-attention')
+    expect(attention).toHaveAccessibleName('Needs You 1')
+    fireEvent.click(attention)
+    expect(renderedTabIds()).toEqual(['tab-0'])
+    expect(attention).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(attention)
+    expect(renderedTabIds()).toHaveLength(4)
+    expect(attention).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('hides a card from its header without moving the cards around it', () => {
