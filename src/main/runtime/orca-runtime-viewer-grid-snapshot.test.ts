@@ -371,7 +371,7 @@ describe('viewer-created emulator', () => {
     let registered = false
     const { runtime } = createRuntimeWithRendererPane({
       ptySize: { cols: 85, rows: 22 },
-      rendererFrame: { data: 'history the pane holds\r\n', cols: 85, rows: 22 },
+      rendererFrame: { data: 'history the pane holds\r\n', cols: 85, rows: 22, seq: 0 },
       rendererRegistered: () => registered
     })
     runtime.ensureHeadlessTerminalForViewer('pty-1')
@@ -385,6 +385,109 @@ describe('viewer-created emulator', () => {
     expect(snapshot?.data).toContain('history the pane holds')
     expect(snapshot?.data).toContain('a live byte')
     expect(runtime.snapshotState.headlessHydrationState.get('pty-1')).toBe('done')
+  })
+
+  it.each(['null', 'empty', 'reject'] as const)(
+    'retains history and retries after a %s renderer capture',
+    async (failure) => {
+      let registered = false
+      const { runtime, serializeBuffer } = createRuntimeWithRendererPane({
+        ptySize: { cols: 85, rows: 22 },
+        rendererFrame: null,
+        rendererRegistered: () => registered
+      })
+      runtime.ensureHeadlessTerminalForViewer('pty-1')
+      runtime.onPtyData('pty-1', 'retained history\r\n', Date.now())
+      const old = runtime.snapshotState.headlessTerminals.get('pty-1')!.emulator
+      await runtime.serializeMainTerminalBuffer('pty-1')
+      const dispose = vi.spyOn(old, 'dispose')
+      registered = true
+      if (failure === 'empty') {
+        serializeBuffer.mockResolvedValueOnce({ data: '', cols: 85, rows: 22, seq: 18 })
+      }
+      if (failure === 'reject') {
+        serializeBuffer.mockRejectedValueOnce(new Error('renderer detached'))
+      }
+      runtime.onPtyData('pty-1', 'later\r\n', Date.now())
+      const snapshot = await runtime.serializeMainTerminalBuffer('pty-1')
+      expect(snapshot?.data).toContain('retained history')
+      expect(snapshot?.data).toContain('later')
+      expect(dispose).not.toHaveBeenCalled()
+      expect(runtime.snapshotState.headlessHydrationState.get('pty-1')).toBe('awaiting-serializer')
+      serializeBuffer.mockResolvedValueOnce({
+        data: 'complete history\r\n',
+        cols: 85,
+        rows: 22,
+        seq: snapshot?.seq ?? 0
+      })
+      runtime.onPtyData('pty-1', 'newest\r\n', Date.now())
+      const retried = await runtime.serializeMainTerminalBuffer('pty-1')
+      expect(retried?.data).toContain('complete history')
+      expect(retried?.data).toContain('newest')
+      expect(dispose).toHaveBeenCalledOnce()
+      runtime.dropHeadlessTerminal('pty-1')
+    }
+  )
+
+  it('does not duplicate live bytes already covered by a renderer snapshot', async () => {
+    const { runtime, serializeBuffer } = createRuntimeWithRendererPane({
+      ptySize: { cols: 85, rows: 22 },
+      rendererFrame: null
+    })
+    serializeBuffer.mockImplementationOnce(async () => {
+      runtime.onPtyData('pty-1', 'after\r\n', Date.now())
+      return { data: 'history\r\nfirst\r\n', cols: 85, rows: 22, seq: 7 }
+    })
+    runtime.onPtyData('pty-1', 'first\r\n', Date.now())
+    const snapshot = await runtime.serializeMainTerminalBuffer('pty-1')
+    expect(snapshot?.data.match(/first/g)).toHaveLength(1)
+    expect(snapshot?.data).toContain('after')
+    const settled = await runtime.serializeMainTerminalBuffer('pty-1')
+    expect(settled?.seq).toBe(14)
+    runtime.dropHeadlessTerminal('pty-1')
+  })
+
+  it.each([false, true])(
+    'reconciles a snapshot crossing a live chunk (transformed=%s)',
+    async (transformed) => {
+      const { runtime } = createRuntimeWithRendererPane({
+        ptySize: { cols: 85, rows: 22 },
+        rendererFrame: { data: 'seed', cols: 85, rows: 22, seq: 3 }
+      })
+      runtime.onPtyData('pty-1', 'abcde', Date.now(), 5, transformed)
+      const snapshot = await runtime.serializeMainTerminalBuffer('pty-1')
+      expect(snapshot?.data).toContain(transformed ? 'abcde' : 'seedde')
+      expect(snapshot?.seq).toBe(5)
+      expect(runtime.snapshotState.headlessHydrationState.get('pty-1')).toBe(
+        transformed ? 'awaiting-serializer' : 'done'
+      )
+      runtime.dropHeadlessTerminal('pty-1')
+    }
+  )
+
+  it('does not publish a late hydration into a replacement PTY model', async () => {
+    const { runtime, serializeBuffer } = createRuntimeWithRendererPane({
+      ptySize: { cols: 85, rows: 22 },
+      rendererFrame: null
+    })
+    let finish!: (frame: { data: string; cols: number; rows: number; seq: number }) => void
+    serializeBuffer.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    runtime.onPtyData('pty-1', 'old', Date.now())
+    const pending = runtime.serializeMainTerminalBuffer('pty-1')
+    await Promise.resolve()
+    runtime.dropHeadlessTerminal('pty-1')
+    runtime.ensureHeadlessTerminalForViewer('pty-1')
+    const replacement = runtime.snapshotState.headlessTerminals.get('pty-1')
+    finish({ data: 'obsolete', cols: 85, rows: 22, seq: 0 })
+    await pending
+    expect(runtime.snapshotState.headlessTerminals.get('pty-1')).toBe(replacement)
+    expect(runtime.snapshotState.headlessHydrationState.get('pty-1')).toBe('awaiting-serializer')
+    runtime.dropHeadlessTerminal('pty-1')
   })
 
   it('is not created for a pty the runtime has no grid for', () => {
