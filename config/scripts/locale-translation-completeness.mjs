@@ -18,13 +18,13 @@ export function collectTranslationDebt(english, translated, acceptedIdentical = 
   const target = flattenTranslationCatalog(translated)
   const debt = {}
   for (const [key, value] of [...source].sort(([a], [b]) => a.localeCompare(b))) {
-    if (shouldPreserveEnglishValue(value, key) || acceptedIdentical[key] === value) {
+    if (shouldPreserveEnglishValue(value, key)) {
       continue
     }
     const localValue = target.get(key)
     if (typeof localValue !== 'string' || localValue.trim() === '') {
       debt[key] = `missing: ${value}`
-    } else if (localValue.trim() === value.trim()) {
+    } else if (localValue.trim() === value.trim() && acceptedIdentical[key] !== value) {
       debt[key] = `identical: ${value}`
     }
   }

@@ -329,8 +329,7 @@ function verifyLocaleCatalog(enCatalog, localeName, localeCatalog) {
     collectLocaleParityIssues(enCatalog, localeCatalog)
   const genericTermRegressions = collectGenericTermRegressions(enEntries, localeEntries, localeName)
 
-  // Why: feature PRs own English declarations; absent target leaves deliberately
-  // use i18next's existing English fallback until a localization PR supplies them.
+  // Presence is reported separately; checkCompleteness enforces configured locale debt limits.
   console.log(
     `${localeName}.json coverage: ${enEntries.size - missingInLocale.length}/${enEntries.size} present, ${missingInLocale.length} missing (presence does not certify translation).`
   )

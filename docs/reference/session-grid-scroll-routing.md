@@ -41,7 +41,9 @@ There is no per-preview overflow handler or custom grid handoff event. Standalon
 
 The renderer uses `focus | terminal | grid`. Disk and RPC retain `auto | terminal | grid`: `auto` is only the historical encoding of Focus for current clients. Hydration maps it to Focus; the existing persisted-UI write adapter maps Focus back to `auto`. Missing settings default to Focus; invalid settings preserve the current value.
 
-The writer baseline holds normalized renderer values, preventing write/echo cycles. No new RPC fields, enum values, capabilities or terminal-stream messages are introduced. Older clients retain their historical interpretation of Auto. Grid and Terminal round-trip unchanged.
+The writer baseline holds normalized renderer values, preventing write/echo cycles. The Auto-to-Focus routing change adds no further RPC fields, enum values, capabilities or terminal-stream messages. Older clients retain their historical interpretation of Auto. Grid and Terminal round-trip unchanged.
+
+The sessions-grid feature itself adds persisted fields, including `sessionsGridWheelTarget`. The `ui.set` writer gates them through `host-gated-ui-fields.ts`: `ui.session-grid-fields.v1`, `ui.session-grid-wheel-target.v1` and `ui.session-grid-visibility.v1` cover new keys; `ui.session-grid-preset-3x1.v1` covers the new preset value. Unsupported fields and values are omitted before reaching an older host's strict schema.
 
 ## Regression checks
 
