@@ -74,7 +74,7 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
             <Button
               variant="ghost"
               size="icon-xs"
-              className="size-7 shrink-0"
+              className="shrink-0"
               onClick={onBack}
               aria-label={backLabel}
             >
@@ -94,7 +94,7 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
                   variant="ghost"
                   size="icon-xs"
                   data-testid="session-grid-new-session"
-                  className="size-7 shrink-0"
+                  className="shrink-0"
                   aria-label={newSessionLabel}
                 >
                   <Plus className="size-4" />
@@ -136,11 +136,11 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
 
       <div className="flex shrink-0 items-center gap-2 @max-xl/toolbar:gap-1">
         {/* Always mounted, so the row does not change width as pages come and go. */}
-        <div className="flex h-7 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 px-1 text-xs text-muted-foreground">
+        <div className="flex h-6 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 px-1 text-xs text-muted-foreground">
           <Button
             variant="ghost"
             size="icon-xs"
-            className="size-6"
+            className="h-full"
             disabled={currentPage <= 0}
             onClick={() => onPageChange(currentPage - 1)}
             aria-label={translate(
@@ -151,13 +151,13 @@ export const SessionGridToolbar = memo(function SessionGridToolbar({
             <ChevronLeft className="size-3.5" />
           </Button>
           {/* pt-px: box-centred digits render ~0.5px above the chevrons' centre (measured on a 1× display); the nudge lands them on it. */}
-          <span className="inline-flex h-6 items-center justify-center px-1 pt-px text-[11px] tabular-nums text-foreground/80 select-none">
+          <span className="inline-flex h-full items-center justify-center px-1 pt-px text-[11px] tabular-nums text-foreground/80 select-none">
             {currentPage + 1} / {Math.max(totalPages, 1)}
           </span>
           <Button
             variant="ghost"
             size="icon-xs"
-            className="size-6"
+            className="h-full"
             disabled={currentPage >= totalPages - 1}
             onClick={() => onPageChange(currentPage + 1)}
             aria-label={translate(

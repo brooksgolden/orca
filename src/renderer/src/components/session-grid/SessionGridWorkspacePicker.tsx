@@ -109,7 +109,7 @@ export function SessionGridWorkspacePicker({
             'Workspace: {{value0}}',
             { value0: activeFilter === 'all' ? allLabel : (activeOption?.label ?? allLabel) }
           )}
-          className={cn('h-7 max-w-64 @max-2xl/toolbar:max-w-none', className)}
+          className={cn('max-w-64 @max-2xl/toolbar:max-w-none', className)}
         >
           {/* Below 672 px the words go and the icon stands in; the tooltip still names the scope. */}
           <FolderGit2 className="size-3.5 text-muted-foreground @2xl/toolbar:!hidden" />

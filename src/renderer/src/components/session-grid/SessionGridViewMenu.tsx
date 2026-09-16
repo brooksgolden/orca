@@ -117,7 +117,7 @@ export function SessionGridZoomStepper({ className }: { className?: string }): R
       role="group"
       aria-label={translate('auto.components.session.grid.SessionGridViewMenu.zoom', 'Zoom')}
       className={cn(
-        'inline-flex h-7 shrink-0 items-stretch overflow-hidden rounded-md border border-border/80 bg-background/50',
+        'inline-flex h-6 shrink-0 items-stretch overflow-hidden rounded-md border border-border/80 bg-background/50',
         className
       )}
     >
@@ -208,7 +208,7 @@ export function SessionGridViewMenu({
           size="xs"
           data-testid="session-grid-view-menu"
           aria-label={translate('auto.components.session.grid.SessionGridViewMenu.trigger', 'View')}
-          className={cn('h-7 @max-xl/toolbar:w-7', className)}
+          className={cn('@max-xl/toolbar:w-6', className)}
         >
           <LayoutGrid className="size-3.5 text-muted-foreground" />
           <span className="@max-2xl/toolbar:!hidden">{getPresetLabels()[preset]}</span>
