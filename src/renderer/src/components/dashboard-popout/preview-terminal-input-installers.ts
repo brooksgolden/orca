@@ -36,6 +36,7 @@ export type PreviewInputInstallers = {
 /** IME, key policy, host quirks and input routing share one tracker and bridge; installed apart, a reconnect left one behind. */
 export function createPreviewInputInstallers(args: {
   ptyId: string
+  getPtyId: () => string
   getTerminal: () => Terminal | null
   kittyKeyboardModes: TerminalKittyKeyboardModeTracker
   pasteClipboardText: (activeElement: Element | null, source: PreviewTerminalPasteSource) => void
@@ -144,6 +145,7 @@ export function createPreviewInputInstallers(args: {
       }
       disposeDictation = installPreviewTerminalDictation({
         ptyId: args.ptyId,
+        getPtyId: args.getPtyId,
         container,
         terminal,
         getTerminalInput: args.getTerminalInput

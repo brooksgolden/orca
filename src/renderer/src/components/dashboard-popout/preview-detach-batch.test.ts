@@ -54,4 +54,39 @@ describe('preview detach batching', () => {
 
     expect(detach).not.toHaveBeenCalled()
   })
+
+  it('releases both surfaces of one PTY and deduplicates repeated requests', async () => {
+    queuePreviewDetach('p1', 'surface-a')
+    queuePreviewDetach('p1', 'surface-b')
+    queuePreviewDetach('p1', 'surface-a')
+
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(detach).toHaveBeenCalledTimes(2)
+    expect(detach).toHaveBeenCalledWith(['p1'], 'surface-a')
+    expect(detach).toHaveBeenCalledWith(['p1'], 'surface-b')
+  })
+
+  it('reclaims one pending surface per remount without keeping the other claim', async () => {
+    queuePreviewDetach('p1', 'surface-a')
+    queuePreviewDetach('p1', 'surface-b')
+
+    expect(cancelPreviewDetach('p1')).toBe('surface-a')
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(detach).toHaveBeenCalledExactlyOnceWith(['p1'], 'surface-b')
+    expect(cancelPreviewDetach('p1')).toBeNull()
+  })
+
+  it('hands distinct pending surfaces to two same-frame remounts', async () => {
+    queuePreviewDetach('p1', 'surface-a')
+    queuePreviewDetach('p1', 'surface-b')
+
+    expect(cancelPreviewDetach('p1')).toBe('surface-a')
+    expect(cancelPreviewDetach('p1')).toBe('surface-b')
+    expect(cancelPreviewDetach('p1')).toBeNull()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(detach).not.toHaveBeenCalled()
+  })
 })

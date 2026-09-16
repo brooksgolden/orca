@@ -1,7 +1,7 @@
 // Coalesces preview detaches into one IPC per surface per frame: every
 // hand-back main processes re-arms its global resize-suppression window (see
 // the terminalPreview:detach handler), and a same-frame remount costs nothing.
-const pending = new Map<string, string>()
+const pending = new Map<string, Set<string>>()
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 
 function flush(): void {
@@ -10,8 +10,12 @@ function flush(): void {
     return
   }
   const bySurface = new Map<string, string[]>()
-  for (const [ptyId, surfaceId] of pending) {
-    bySurface.set(surfaceId, [...(bySurface.get(surfaceId) ?? []), ptyId])
+  for (const [ptyId, surfaceIds] of pending) {
+    for (const surfaceId of surfaceIds) {
+      const ptyIds = bySurface.get(surfaceId) ?? []
+      ptyIds.push(ptyId)
+      bySurface.set(surfaceId, ptyIds)
+    }
   }
   pending.clear()
   for (const [surfaceId, ptyIds] of bySurface) {
@@ -21,7 +25,9 @@ function flush(): void {
 
 /** Release this surface's stream and grid claim on the pty with the next batch. */
 export function queuePreviewDetach(ptyId: string, surfaceId: string): void {
-  pending.set(ptyId, surfaceId)
+  const surfaceIds = pending.get(ptyId) ?? new Set<string>()
+  surfaceIds.add(surfaceId)
+  pending.set(ptyId, surfaceIds)
   if (flushTimer === null) {
     // Why a macrotask, not a microtask: a remount lands in the same React
     // commit as the unmount, and its effect must run before the batch flushes.
@@ -30,12 +36,16 @@ export function queuePreviewDetach(ptyId: string, surfaceId: string): void {
 }
 
 /**
- * A preview for this pty mounted again before the batch went out: keep its
- * claim and hand back the surface id main still holds, so the remount carries
- * on as that surface instead of leaking it.
+ * A remount adopts one pending surface and its claim; sibling surfaces still detach.
  */
 export function cancelPreviewDetach(ptyId: string): string | null {
-  const surfaceId = pending.get(ptyId) ?? null
-  pending.delete(ptyId)
+  const surfaceIds = pending.get(ptyId)
+  const surfaceId = surfaceIds?.values().next().value ?? null
+  if (surfaceId !== null) {
+    surfaceIds?.delete(surfaceId)
+    if (surfaceIds?.size === 0) {
+      pending.delete(ptyId)
+    }
+  }
   return surfaceId
 }

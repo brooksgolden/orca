@@ -75,6 +75,7 @@ export function AgentTerminalPreview({
   const macOptionAsAltRef = useRef(macOptionAsAlt)
   const workspaceRef = useRef(workspace)
   const terminalInputRef = useRef(terminalInput)
+  const ptyIdRef = useRef(ptyId)
   const fontSizeRef = useRef(fontSize)
   const autoFocusRef = useRef(autoFocus)
   const onPtyGoneRef = useRef(onPtyGone)
@@ -97,10 +98,11 @@ export function AgentTerminalPreview({
     macOptionAsAltRef.current = macOptionAsAlt
     workspaceRef.current = workspace
     terminalInputRef.current = terminalInput
+    ptyIdRef.current = ptyId
     fontSizeRef.current = fontSize
     autoFocusRef.current = autoFocus
     onPtyGoneRef.current = onPtyGone
-  }, [settings, macOptionAsAlt, terminalInput, workspace, fontSize, autoFocus, onPtyGone])
+  }, [settings, macOptionAsAlt, terminalInput, ptyId, workspace, fontSize, autoFocus, onPtyGone])
 
   useEffect(() => {
     setPtyGone(false)
@@ -227,6 +229,7 @@ export function AgentTerminalPreview({
 
     const inputInstallers = createPreviewInputInstallers({
       ptyId,
+      getPtyId: () => ptyIdRef.current,
       getTerminal: () => terminal,
       kittyKeyboardModes,
       pasteClipboardText: (activeElement, source) => void pasteClipboardText(activeElement, source),

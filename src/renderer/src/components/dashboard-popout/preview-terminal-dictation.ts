@@ -5,6 +5,7 @@ import { createPreviewTextPaster } from './preview-terminal-paste'
 
 export function installPreviewTerminalDictation(args: {
   ptyId: string
+  getPtyId: () => string
   container: HTMLElement
   terminal: Terminal
   getTerminalInput: () => DashboardCardTerminalInput | null
@@ -24,6 +25,7 @@ export function installPreviewTerminalDictation(args: {
           return (
             !disposed &&
             args.container.isConnected &&
+            args.getPtyId() === args.ptyId &&
             current?.connectionId === terminalInput?.connectionId &&
             current?.runtimeEnvironmentId === terminalInput?.runtimeEnvironmentId
           )
