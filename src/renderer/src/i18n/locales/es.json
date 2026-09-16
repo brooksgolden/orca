@@ -589,6 +589,15 @@
         },
         "activation": {
           "cannotOpenFolderWorkspace": "No se puede abrir el espacio de trabajo de carpeta"
+        },
+        "creation": {
+          "flow": {
+            "structured": {
+              "launch": {
+                "unknown": "No se pudo confirmar si se abrió el chat de {{value0}}. Reintenta para comprobarlo."
+              }
+            }
+          }
         }
       },
       "folderWorkspacePathStatus": {
@@ -10273,7 +10282,8 @@
           "noteKeysBody": "Las claves de API y los espacios de trabajo se guardan para el entorno de ejecución activo.",
           "noteVisibilityTitle": "Ocultar no desconecta",
           "noteVisibilityBody": "Ocultar Linear en Fuentes de tareas solo lo quita del selector. No elimina la clave ni la habilidad.",
-          "setupChecking": "Comprobando…"
+          "setupChecking": "Comprobando…",
+          "setupUnverified": "No se puede verificar"
         },
         "TaskSourceLinearSetup": {
           "connectTitle": "Conectar Linear",
@@ -10299,7 +10309,8 @@
           "statusHidden": "Oculto en Tareas",
           "statusIncomplete": "Necesita configuración",
           "collapseSetup": "Contraer los pasos de configuración de {{provider}}",
-          "expandSetup": "Mostrar los pasos de configuración de {{provider}}"
+          "expandSetup": "Mostrar los pasos de configuración de {{provider}}",
+          "statusUnverified": "No se puede verificar"
         },
         "TaskSourceShowInTasksStep": {
           "shown": "Visible",
@@ -14770,6 +14781,15 @@
         "9a4c6b2d7e": "Compartir skills",
         "9f2c1a4b7d": "Se ha cerrado tu sesión",
         "c5b3e8a17d": "Iniciar sesión en Orca"
+      },
+      "native": {
+        "chat": {
+          "NativeChatLaunchRetry": {
+            "failed": "No se pudo iniciar el chat.",
+            "retry": "Reintentar",
+            "unknown": "No se pudo confirmar la conexión del chat."
+          }
+        }
       }
     },
     "i18n": {
@@ -15045,6 +15065,11 @@
         "one": "1 archivo modificado",
         "partial": "Diff parcial",
         "recorded": "Totales de las ediciones registradas en este turno."
+      },
+      "ask": {
+        "asked": "Preguntado:",
+        "awaiting": "Esperando respuesta del usuario:",
+        "questionCount": "{{value0}} preguntas"
       }
     },
     "tab": {
