@@ -44,6 +44,10 @@ export class TrailingTerminalOutputCapture {
         return null
       }
       const uncovered = getOutputAfterSnapshotSeq(chunk, snapshotSeq)
+      // A null chunk beyond the snapshot is unsliceable, not covered.
+      if (!uncovered && seq > snapshotSeq) {
+        return null
+      }
       if (uncovered && uncovered.data.length > 0) {
         trailing.push({ data: uncovered.data, seq })
       }

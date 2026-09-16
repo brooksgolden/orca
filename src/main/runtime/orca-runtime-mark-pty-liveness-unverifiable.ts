@@ -61,11 +61,11 @@ export class OrcaRuntimeWithMarkPtyLivenessUnverifiable extends OrcaRuntimeWithO
   }
 
   async verifyTerminalPreviewLiveness(ptyId: string): Promise<PtyLivenessVerdict['status']> {
-    if (this.isPtyKnownExited(ptyId)) {
-      return 'exited'
-    }
     if (this.getPtyLivenessVerdict(ptyId)?.status === 'unverifiable') {
       return 'unverifiable'
+    }
+    if (this.isPtyKnownExited(ptyId)) {
+      return 'exited'
     }
     const generation = this.getPtyLifecycleGeneration(ptyId)
     const absent = await withTimeout(this.isLeafPtyProvenAbsent(ptyId), 2_000, false)

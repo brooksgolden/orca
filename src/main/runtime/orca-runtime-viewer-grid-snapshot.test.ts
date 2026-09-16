@@ -322,6 +322,29 @@ describe('reframed snapshot sequence', () => {
     expect(snapshot?.seq).toBe(5 + 'after the frame\r\n'.length)
   })
 
+  it('does not advertise later bytes past an unsliceable transformed snapshot boundary', async () => {
+    const { runtime } = createRuntimeWithRendererPane({
+      ptySize: { cols: 85, rows: 22 },
+      rendererFrame: null,
+      rendererRegistered: () => false
+    })
+    runtime.snapshotState.providerSnapshotPreferredPtys.add('pty-1')
+    runtime.useProviderCapture(async () => {
+      runtime.onPtyData('pty-1', 'transformed output', Date.now(), 10, true)
+      runtime.onPtyData('pty-1', 'later bytes', Date.now())
+      runtime.dropHeadlessTerminal('pty-1')
+      return { data: 'frame at seq 5\r\n', cols: 110, rows: 40, seq: 5, source: 'headless' }
+    })
+    try {
+      const snapshot = await runtime.serializeTerminalBuffer('pty-1', { scrollbackRows: 24 })
+      expect(snapshot?.data).toContain('frame at seq 5')
+      expect(snapshot?.seq).toBe(5)
+      expect(snapshot?.data).not.toContain('later bytes')
+    } finally {
+      runtime.dropHeadlessTerminal('pty-1')
+    }
+  })
+
   it('keeps the source seq when the capture cannot prove it is contiguous', async () => {
     const { runtime } = createRuntimeWithRendererPane({
       ptySize: { cols: 85, rows: 22 },
