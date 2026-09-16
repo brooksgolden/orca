@@ -3,13 +3,14 @@
 import type { ReactNode } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import type { AgentLaunchSurface } from '@/lib/launch-agent-in-new-tab'
 import type { StructuredAgentLaunchSettlement } from '@/lib/structured-agent-launch-settlement'
 import { SessionGridLaunchTargetList } from './SessionGridLaunchPicker'
 
 const harness = vi.hoisted(() => ({
   launch: vi.fn<
     () => {
-      tabId: string | null
+      surface: AgentLaunchSurface
       structuredSettlement?: Promise<StructuredAgentLaunchSettlement>
     }
   >(),
@@ -62,7 +63,10 @@ function launchChat() {
   const structuredSettlement = new Promise<StructuredAgentLaunchSettlement>((resolve) => {
     settle = resolve
   })
-  harness.launch.mockReturnValue({ tabId: null, structuredSettlement })
+  harness.launch.mockReturnValue({
+    surface: { kind: 'local-agent-session', tabId: 'chat-tab', sessionId: 'new-chat' },
+    structuredSettlement
+  })
   render(
     <SessionGridLaunchTargetList
       entry={{
@@ -104,21 +108,9 @@ it('waits for native chat creation, then reveals its workspace and closes the pi
   expect(harness.mount).not.toHaveBeenCalled()
 })
 
-it('mounts a definitive-refusal terminal fallback in the grid', async () => {
-  const settle = launchChat()
-  await settle({ kind: 'refused-then-legacy', primaryTabId: 'fallback-terminal' })
-  expect(harness.mount).toHaveBeenCalledWith({
-    worktreeId: 'folder:docs',
-    tabIds: ['fallback-terminal']
-  })
-  expect(harness.done).toHaveBeenCalledOnce()
-  expect(harness.reveal).not.toHaveBeenCalled()
-})
-
 it.each([
   { kind: 'cancelled', sessionId: 'new-chat' },
-  { kind: 'failed', error: new Error('Refused') },
-  { kind: 'refused-then-legacy', primaryTabId: null }
+  { kind: 'failed', error: new Error('Refused') }
 ] as const)('does not report a successful launch for $kind', async (result) => {
   const settle = launchChat()
   await settle(result)

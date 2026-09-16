@@ -181,8 +181,10 @@ describe('launching from the session grid', () => {
       launchSource: 'session_grid'
     })
 
-    expect(result?.tabId).toBeTruthy()
-    expect(targetTabIds()).toEqual([result!.tabId])
+    if (result?.surface.kind !== 'local-terminal') {
+      throw new Error('Expected terminal launch')
+    }
+    expect(targetTabIds()).toEqual([result.surface.tabId])
     expect(foreground()).toEqual(before)
   })
 
@@ -190,7 +192,10 @@ describe('launching from the session grid', () => {
   it('still activates for a caller that did not ask to stay put', () => {
     const result = launchAgentInNewTab({ agent: 'claude', worktreeId: TARGET_WT })
 
-    expect(useAppStore.getState().activeTabId).toBe(result?.tabId)
+    if (result?.surface.kind !== 'local-terminal') {
+      throw new Error('Expected terminal launch')
+    }
+    expect(useAppStore.getState().activeTabId).toBe(result.surface.tabId)
     expect(useAppStore.getState().activeTabType).toBe('terminal')
   })
 })

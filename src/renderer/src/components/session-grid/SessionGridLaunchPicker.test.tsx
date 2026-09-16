@@ -14,7 +14,9 @@ import { buildSessionGridWorktreeCatalog } from './session-grid-worktree-catalog
 import { SessionGridLaunchPopoverContent } from './SessionGridLaunchPicker'
 
 const harness = vi.hoisted(() => ({
-  launchAgentInNewTab: vi.fn((_args: Record<string, unknown>) => ({ tabId: 'tab-new' })),
+  launchAgentInNewTab: vi.fn((_args: Record<string, unknown>) => ({
+    surface: { kind: 'local-terminal', tabId: 'tab-new' }
+  })),
   backgroundMount: vi.fn(),
   createTab: vi.fn((worktreeId: string) => ({
     id: 'tab-shell',

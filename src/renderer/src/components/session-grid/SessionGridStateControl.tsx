@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { FilterOptionCount } from '../dashboard-popout/FilterOptionCount'
-import { agentStateLabel } from '../dashboard-popout/agent-dashboard-filter-options'
+import { sessionGridStateLabel } from './session-grid-state-label'
 import type { SessionGridBucketCounts } from './session-grid-items-builder'
 import type { SessionGridStateFilter } from '../../../../shared/session-grid-types'
 import { SESSION_GRID_STATE_FILTERS } from '../../../../shared/session-grid-types'
@@ -30,12 +30,6 @@ const BUCKET_GLYPH: Record<Bucket, AgentDotState> = {
   working: 'working',
   done: 'done',
   idle: 'idle'
-}
-
-function stateFilterLabel(filter: SessionGridStateFilter): string {
-  return filter === 'all'
-    ? translate('auto.components.session.grid.SessionGridStateControl.all', 'All')
-    : agentStateLabel(filter)
 }
 
 function stateFilterCount(filter: SessionGridStateFilter, counts: SessionGridBucketCounts): number {
@@ -73,7 +67,7 @@ export function SessionGridAttentionButton({
 }: SessionGridStateControlProps): React.JSX.Element {
   const setSessionsGridStateFilter = useAppStore((s) => s.setSessionsGridStateFilter)
   const active = activeStateFilter === 'attention'
-  const label = stateFilterLabel('attention')
+  const label = sessionGridStateLabel('attention')
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -103,7 +97,7 @@ export function SessionGridStateCompactMenu({
   className
 }: SessionGridStateControlProps): React.JSX.Element {
   const setSessionsGridStateFilter = useAppStore((s) => s.setSessionsGridStateFilter)
-  const activeLabel = stateFilterLabel(activeStateFilter)
+  const activeLabel = sessionGridStateLabel(activeStateFilter)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -154,7 +148,7 @@ export function SessionGridStateCompactMenu({
               data-value={filter}
             >
               <StateGlyph filter={filter} count={stateFilterCount(filter, stateCounts)} />
-              <span>{stateFilterLabel(filter)}</span>
+              <span>{sessionGridStateLabel(filter)}</span>
               <FilterOptionCount count={stateFilterCount(filter, stateCounts)} />
             </DropdownMenuRadioItem>
           ))}

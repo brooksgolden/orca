@@ -30,7 +30,7 @@ export type QuickLaunchAgentMenuItemsProps = {
   /** Called with the new tab id once it exists. The tab bar focuses it, the
    *  session grid mounts it in the background — this component owns neither. */
   onLaunched: (tabId: string) => void
-  /** A native chat has no terminal tab id; the launch surface owns its navigation. */
+  /** The launch surface owns navigation to the created native chat. */
   onStructuredLaunched?: (sessionId: string) => void
   /** Optional initial prompt forwarded to `launchAgentInNewTab`. When set,
    *  the picked agent boots with this prompt — argv/flag agents auto-submit,
@@ -203,13 +203,11 @@ export function useQuickLaunchAgents({
         )
         return
       }
-      if (!result.tabId) {
+      if (result.surface.kind !== 'local-terminal') {
         if (result.structuredSettlement && onStructuredLaunched) {
           void result.structuredSettlement.then((settlement) => {
             if (settlement.kind === 'structured' || settlement.kind === 'visibility-unknown') {
               onStructuredLaunched(settlement.sessionId)
-            } else if (settlement.kind === 'refused-then-legacy' && settlement.primaryTabId) {
-              onLaunched(settlement.primaryTabId)
             }
           })
         }
@@ -217,12 +215,12 @@ export function useQuickLaunchAgents({
         // next session-tabs snapshot instead of a local tab id.
         return
       }
-      onLaunched(result.tabId)
+      onLaunched(result.surface.tabId)
 
       // Why: launch success means the terminal session exists. Agent readiness
       // can lag behind on slow machines, and prompt paste flows already own
       // their own readiness timeout once a PTY exists.
-      const launchedTabId = result.tabId
+      const launchedTabId = result.surface.tabId
       void waitForTerminalPty(launchedTabId, 5000).then((hasPty) => {
         if (hasPty) {
           return
@@ -306,12 +304,6 @@ function QuickLaunchAgentMenuItemsInner(props: QuickLaunchAgentMenuItemsProps): 
       {agents.map((agent) => {
         const label = labelFor(agent)
         const isStructuredLaunchPending = isLaunchPending(agent)
-        const pendingLabel = translate(
-          'components.native-chat.structuredSessionLaunchPending',
-          'Starting {{value0}} chat…',
-          { value0: label }
-        )
-        const menuLabel = isStructuredLaunchPending ? pendingLabel : label
         const showsDefaultAgentShortcut =
           newAgentShortcut !== null && defaultAgent !== 'blank' && agent === defaultAgent
         return (
@@ -320,22 +312,18 @@ function QuickLaunchAgentMenuItemsInner(props: QuickLaunchAgentMenuItemsProps): 
             disabled={isStructuredLaunchPending}
             onSelect={() => runLaunch(agent)}
             className="gap-2 rounded-[7px] px-2 py-1.5 text-[12px] leading-5 font-medium"
-            title={
-              isStructuredLaunchPending
-                ? pendingLabel
-                : translate(
-                    'auto.components.tab.bar.QuickLaunchButton.ec2adf093e',
-                    'Launch {{value0}} in a new terminal',
-                    { value0: label }
-                  )
-            }
+            title={translate(
+              'auto.components.tab.bar.QuickLaunchButton.ec2adf093e',
+              'Launch {{value0}} in a new terminal',
+              { value0: label }
+            )}
           >
             {isStructuredLaunchPending ? (
               <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden="true" />
             ) : (
               <AgentIcon agent={agent} size={14} />
             )}
-            <span className="flex-1">{menuLabel}</span>
+            <span className="flex-1">{label}</span>
             {showsDefaultAgentShortcut ? (
               <DropdownMenuShortcut>{newAgentShortcut}</DropdownMenuShortcut>
             ) : null}

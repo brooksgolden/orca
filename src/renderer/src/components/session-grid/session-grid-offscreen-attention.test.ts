@@ -4,7 +4,7 @@ import {
   sessionGridItemNeedsAttention
 } from './session-grid-offscreen-attention'
 import { offscreenAttentionLabel } from './SessionGridOffscreenAttentionPill'
-import { agentStateLabel } from '../dashboard-popout/agent-dashboard-filter-options'
+import { sessionGridStateLabel } from './session-grid-state-label'
 import {
   sessionGridDotStateBucket,
   type SessionGridAttentionBadge,
@@ -191,7 +191,7 @@ describe('resolveSessionGridOffscreenAttention', () => {
  * user meets a screen apart, and nothing else in the codebase would catch it.
  */
 describe('the pill does not borrow the state chip’s vocabulary', () => {
-  const CHIP_LABEL = agentStateLabel('attention')
+  const CHIP_LABEL = sessionGridStateLabel('attention')
 
   it('counts a wider set than the chip it must not imitate', () => {
     expect(sessionGridItemNeedsAttention({ attentionBadge: 'unread' })).toBe(true)
