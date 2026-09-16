@@ -170,6 +170,7 @@ export type UISliceCore = {
   /** Tabs kept out of the grid. A view, not a model: the pty stays live and the tab stays in its tab bar. */
   sessionsGridHiddenTabIds: string[]
   activeSessionGridTabId: string | null
+  activeSessionGridWorktreeId: string | null
   setSessionsGridPreset: (preset: SessionGridLayoutPreset) => void
   setSessionsGridZoom: (zoom: number) => void
   toggleSessionsGridShowEmpty: () => void
@@ -180,7 +181,7 @@ export type UISliceCore = {
   setSessionsGridTabOrder: (order: string[]) => void
   setSessionsGridHiddenTabIds: (tabIds: string[]) => void
   toggleSessionsGridHiddenTab: (tabId: string) => void
-  setActiveSessionGridTabId: (tabId: string | null) => void
+  setActiveSessionGridTabId: (tabId: string | null, worktreeId?: string) => void
   setActiveView: (view: UISliceCore['activeView']) => void
   taskPageData: TaskPageData
   taskResumeState: TaskResumeState | undefined

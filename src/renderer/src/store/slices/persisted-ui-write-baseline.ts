@@ -1,6 +1,5 @@
 import { shallow } from 'zustand/vanilla/shallow'
 import { serializeSessionGridWheelTarget } from '../../../../shared/session-grid-types'
-import { isHostGatedUiField } from '../../../../shared/host-gated-ui-fields'
 import type { PersistedUIState } from '../../../../shared/persisted-ui-state-types'
 import type {
   SessionGridFilter,
@@ -173,12 +172,7 @@ export function diffPersistedUIWriteFields(
 
 const UNRECOGNIZED_KEY_MESSAGE = /unrecognized key/i
 
-/**
- * The part of a rejected batch to stop re-sending. Only an `invalid_argument` rejection
- * quarantines (a transport failure returns null and stays dirty for the next edit): the
- * strict paired-host schema names the unknown keys, so those are folded; if it names none,
- * the host-gated members are the only keys an old host can refuse; failing that, the whole batch.
- */
+/** Only explicitly named unknown wire keys can be removed from the dirty baseline. */
 export function quarantineRejectedPersistedUIWriteFields(
   error: unknown,
   changed: Partial<PersistedUIWriteBaseline>
@@ -198,9 +192,9 @@ export function quarantineRejectedPersistedUIWriteFields(
       ? [...message.matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? '')
       : []
   const refused = sent.filter((field) => named.includes(wireNameOf(field)))
-  const gated = sent.filter(isHostGatedUiField)
-  const quarantined = refused.length > 0 ? refused : gated.length > 0 ? gated : sent
-  return Object.fromEntries(quarantined.map((field) => [field, changed[field]]))
+  return refused.length > 0
+    ? Object.fromEntries(refused.map((field) => [field, changed[field]]))
+    : null
 }
 
 function wireNameOf(field: keyof PersistedUIWriteBaseline): string {

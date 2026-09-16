@@ -40,11 +40,24 @@ export function computeGridDimensions(
 /** Pixel row height that locks `rowsPerView` rows to the measured viewport. */
 export function computeSessionGridRowHeight(containerHeight: number, rowsPerView: number): number {
   const baseHeight = containerHeight > 0 ? containerHeight : 800
-  const available = Math.max(
-    MIN_ROW_HEIGHT_PX,
+  const available =
     baseHeight - 2 * SESSION_GRID_PADDING_PX - (rowsPerView - 1) * SESSION_GRID_ROW_GAP_PX
+  return Math.max(MIN_ROW_HEIGHT_PX, Math.round(available / rowsPerView))
+}
+
+/** Row/free navigation counts only rows that fit once the minimum height applies. */
+export function computeSessionGridVisibleRowCount(
+  containerHeight: number,
+  rowsPerView: number
+): number {
+  const available =
+    (containerHeight > 0 ? containerHeight : 800) -
+    2 * SESSION_GRID_PADDING_PX +
+    SESSION_GRID_ROW_GAP_PX
+  return Math.min(
+    rowsPerView,
+    Math.max(1, Math.floor(available / (MIN_ROW_HEIGHT_PX + SESSION_GRID_ROW_GAP_PX)))
   )
-  return Math.round(available / rowsPerView)
 }
 
 export type SessionGridSlotCounts = {

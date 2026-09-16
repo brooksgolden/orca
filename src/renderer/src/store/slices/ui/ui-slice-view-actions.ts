@@ -4,13 +4,16 @@ import { toggleSessionGridHiddenTabId } from '../session-grid-hidden-tabs'
 import { rewindHistoryIndexPastView } from '../worktree-nav-history'
 import { clampSessionGridZoom } from '../session-grid-zoom'
 
-const CLEARED_SESSION_GRID_SELECTION = { activeSessionGridTabId: null } as const
+const CLEARED_SESSION_GRID_SELECTION = {
+  activeSessionGridTabId: null,
+  activeSessionGridWorktreeId: null
+} as const
 
 /** Hiding the picked card takes it off the board; showing another one leaves the pick alone. */
 function clearedSelectionBuriedBy(
   state: Pick<UISlice, 'activeSessionGridTabId'>,
   hiddenTabIds: readonly string[]
-): { activeSessionGridTabId?: null } {
+): Partial<typeof CLEARED_SESSION_GRID_SELECTION> {
   return state.activeSessionGridTabId && hiddenTabIds.includes(state.activeSessionGridTabId)
     ? CLEARED_SESSION_GRID_SELECTION
     : {}
@@ -121,6 +124,7 @@ export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<U
       get().recordViewVisit('sessions')
       set((state) => ({
         activeView: 'sessions',
+        ...CLEARED_SESSION_GRID_SELECTION,
         previousViewBeforeSessions:
           state.activeView === 'sessions' ? state.previousViewBeforeSessions : state.activeView
       }))
@@ -160,7 +164,11 @@ export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<U
           ...clearedSelectionBuriedBy(state, sessionsGridHiddenTabIds)
         }
       }),
-    setActiveSessionGridTabId: (tabId) => set({ activeSessionGridTabId: tabId }),
+    setActiveSessionGridTabId: (tabId, worktreeId) =>
+      set({
+        activeSessionGridTabId: tabId,
+        activeSessionGridWorktreeId: tabId ? (worktreeId ?? null) : null
+      }),
     setNewWorkspaceDraft: (draft) => set({ newWorkspaceDraft: draft }),
     clearNewWorkspaceDraft: () => set({ newWorkspaceDraft: null })
   }

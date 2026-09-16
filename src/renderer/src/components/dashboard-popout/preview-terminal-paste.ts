@@ -32,9 +32,12 @@ export function createPreviewClipboardPaster(deps: {
     if (!pasteTerminal) {
       return
     }
+    const terminalInput = deps.getTerminalInput()
     const targetIsCurrent = (): boolean =>
       !deps.isDisposed() &&
       deps.getTerminal() === pasteTerminal &&
+      deps.getTerminalInput()?.connectionId === terminalInput?.connectionId &&
+      deps.getTerminalInput()?.runtimeEnvironmentId === terminalInput?.runtimeEnvironmentId &&
       activeElementAtDispatch !== null &&
       document.activeElement === activeElementAtDispatch &&
       deps.container.contains(activeElementAtDispatch)
@@ -43,7 +46,6 @@ export function createPreviewClipboardPaster(deps: {
     if (!targetIsCurrent()) {
       return
     }
-    const terminalInput = deps.getTerminalInput()
     const pasteText = createPreviewTextPaster({
       ptyId: deps.ptyId,
       terminal: pasteTerminal,
@@ -53,7 +55,10 @@ export function createPreviewClipboardPaster(deps: {
     })
     await pasteTerminalClipboard({
       readClipboardText: (options) => window.api.ui.readClipboardText(options),
-      saveClipboardImageAsTempFile: (args) => window.api.ui.saveClipboardImageAsTempFile(args),
+      saveClipboardImageAsTempFile: (args) =>
+        targetIsCurrent()
+          ? window.api.ui.saveClipboardImageAsTempFile(args)
+          : Promise.resolve(null),
       connectionId: terminalInput?.connectionId ?? null,
       runtimeEnvironmentId: terminalInput?.runtimeEnvironmentId ?? null,
       pasteText

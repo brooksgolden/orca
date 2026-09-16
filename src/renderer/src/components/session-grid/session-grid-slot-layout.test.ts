@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { computeGridDimensions, computeSessionGridSlotCounts } from './session-grid-slot-layout'
+import {
+  computeGridDimensions,
+  computeSessionGridSlotCounts,
+  computeSessionGridRowHeight
+} from './session-grid-slot-layout'
 
 describe('computeGridDimensions', () => {
   it.each([
@@ -45,5 +49,11 @@ describe('computeSessionGridSlotCounts', () => {
       totalRowCount: 3,
       totalPageCount: 2
     })
+  })
+})
+
+describe('minimum row height', () => {
+  it.each([1, 2, 3])('keeps each of %s rows readable in a short viewport', (rows) => {
+    expect(computeSessionGridRowHeight(300, rows)).toBeGreaterThanOrEqual(200)
   })
 })

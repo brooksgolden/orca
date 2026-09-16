@@ -87,6 +87,22 @@ describe('removeProject purges per-worktree state (leak regression)', () => {
     expect(s.sessionsGridHiddenTabIds).toEqual(['tab-w2'])
   })
 
+  it('preserves grid preferences for a tab that survives under another workspace', async () => {
+    const store = createTestStore()
+    seedTwoProjects(store)
+    store.setState({
+      tabsByWorktree: {
+        ...store.getState().tabsByWorktree,
+        [W2]: [makeTab({ id: 'tab-w1', worktreeId: W2 }), makeTab({ id: 'tab-w2', worktreeId: W2 })]
+      }
+    })
+    const order = store.getState().sessionsGridTabOrder
+    const hidden = store.getState().sessionsGridHiddenTabIds
+    await store.getState().removeProject(repo1.id)
+    expect(store.getState().sessionsGridTabOrder).toBe(order)
+    expect(store.getState().sessionsGridHiddenTabIds).toBe(hidden)
+  })
+
   it('leaves both session-grid lists by reference when the removed project owned no listed tab', async () => {
     const store = createTestStore()
     seedTwoProjects(store)

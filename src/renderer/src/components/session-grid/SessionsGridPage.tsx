@@ -54,6 +54,7 @@ export default function SessionsGridPage(): React.JSX.Element {
   const sessionsGridScrollMode = useAppStore((s) => s.sessionsGridScrollMode)
   const sessionsGridWheelTarget = useAppStore((s) => s.sessionsGridWheelTarget)
   const activeSessionGridTabId = useAppStore((s) => s.activeSessionGridTabId)
+  const activeSessionGridWorktreeId = useAppStore((s) => s.activeSessionGridWorktreeId)
   const setActiveSessionGridTabId = useAppStore((s) => s.setActiveSessionGridTabId)
   const closeSessionsPage = useAppStore((s) => s.closeSessionsPage)
   const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
@@ -165,11 +166,11 @@ export default function SessionsGridPage(): React.JSX.Element {
       resolveSessionGridOffscreenAttention({
         items,
         cols,
-        rowsPerView,
+        rowsPerView: scroll.visibleRowCount,
         mode: sessionsGridScrollMode,
         firstVisibleRow: scroll.firstVisibleRow
       }),
-    [items, cols, rowsPerView, sessionsGridScrollMode, scroll.firstVisibleRow]
+    [items, cols, scroll.visibleRowCount, sessionsGridScrollMode, scroll.firstVisibleRow]
   )
   const scrollToPosition = scroll.scrollToPosition
   const jumpAbove = useCallback(
@@ -195,6 +196,7 @@ export default function SessionsGridPage(): React.JSX.Element {
     setScrollContainer: scroll.setScrollContainer,
     onScroll: scroll.handleScroll,
     activeSessionGridTabId,
+    activeSessionGridWorktreeId,
     activeFilter,
     defaultWorktreeId: activeWorktreeId ?? undefined,
     worktreeCatalog,

@@ -36,6 +36,7 @@ export function createUiTaskActions(set: UISliceSet, get: UISliceGet): Partial<U
     sessionsGridTabOrder: [],
     sessionsGridHiddenTabIds: [],
     activeSessionGridTabId: null,
+    activeSessionGridWorktreeId: null,
     setActiveView: (view) => set({ activeView: view }),
     taskPageData: {},
     taskResumeState: undefined,

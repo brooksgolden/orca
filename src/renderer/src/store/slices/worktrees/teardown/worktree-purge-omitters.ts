@@ -68,7 +68,8 @@ export function createWorktreePurgeOmitters(
     if (!ids) {
       return ids
     }
-    return ids.some((id) => doomedTabIds.has(id)) ? ids.filter((id) => !doomedTabIds.has(id)) : ids
+    const retired = (id: string): boolean => doomedTabIds.has(id) && !survivingTabIds.has(id)
+    return ids.some(retired) ? ids.filter((id) => !retired(id)) : ids
   }
   const omitByBrowserWorkspaceId = <T>(obj: Record<string, T>): Record<string, T> =>
     omitRecordKeys(obj, doomedBrowserWorkspaceIds)

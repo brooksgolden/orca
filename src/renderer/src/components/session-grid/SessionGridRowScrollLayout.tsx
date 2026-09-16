@@ -34,7 +34,11 @@ export function SessionGridRowScrollLayout({
   const rowStep = rowHeight + SESSION_GRID_ROW_GAP_PX
   const rowCount = Math.max(1, Math.ceil(totalSlotCount / cols))
   const activeIndex = slotProps.activeSessionGridTabId
-    ? items.findIndex((item) => item.tabId === slotProps.activeSessionGridTabId)
+    ? items.findIndex(
+        (item) =>
+          item.tabId === slotProps.activeSessionGridTabId &&
+          item.worktreeId === slotProps.activeSessionGridWorktreeId
+      )
     : -1
   const activeRow = activeIndex === -1 ? null : Math.floor(activeIndex / cols)
 

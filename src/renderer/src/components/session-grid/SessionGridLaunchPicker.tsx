@@ -282,6 +282,7 @@ export function SessionGridLaunchTargetList({
     worktreeId: entry.worktreeId,
     executionHostId: entry.executionHostId,
     onLaunched,
+    onHostPublished: onDone,
     onStructuredLaunched: (sessionId) => {
       if (revealSessionGridChat(entry.worktreeId, entry.executionHostId, sessionId)) {
         onDone()

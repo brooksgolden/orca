@@ -45,6 +45,7 @@ export function useAutoAckViewedAgent(floatingPanelVisible: boolean): void {
     let lastActiveView: unknown = undefined
     let lastActiveTabId: unknown = undefined
     let lastActiveSessionGridTabId: unknown = undefined
+    let lastActiveSessionGridWorktreeId: unknown = undefined
     let lastFloatingWorkspaceActiveTabId: unknown = undefined
     let lastAgentStatus: unknown = undefined
     let lastRetained: unknown = undefined
@@ -69,6 +70,7 @@ export function useAutoAckViewedAgent(floatingPanelVisible: boolean): void {
         // Why its own ref: selecting another grid card moves nothing else in the store,
         // so without this the scan would skip the very transition that means "I'm looking".
         s.activeSessionGridTabId === lastActiveSessionGridTabId &&
+        s.activeSessionGridWorktreeId === lastActiveSessionGridWorktreeId &&
         floatingWorkspaceActiveTabId === lastFloatingWorkspaceActiveTabId &&
         s.agentStatusByPaneKey === lastAgentStatus &&
         s.retainedAgentsByPaneKey === lastRetained &&
@@ -89,6 +91,7 @@ export function useAutoAckViewedAgent(floatingPanelVisible: boolean): void {
       lastActiveView = s.activeView
       lastActiveTabId = s.activeTabId
       lastActiveSessionGridTabId = s.activeSessionGridTabId
+      lastActiveSessionGridWorktreeId = s.activeSessionGridWorktreeId
       lastUnreadTerminalTabs = s.unreadTerminalTabs
       lastFloatingWorkspaceActiveTabId = floatingWorkspaceActiveTabId
       lastAgentStatus = s.agentStatusByPaneKey

@@ -3,7 +3,11 @@ import type {
   SessionGridScrollMode,
   SessionGridWheelTarget
 } from '../../../../shared/session-grid-types'
-import { SESSION_GRID_ROW_GAP_PX, computeSessionGridRowHeight } from './session-grid-slot-layout'
+import {
+  SESSION_GRID_ROW_GAP_PX,
+  computeSessionGridRowHeight,
+  computeSessionGridVisibleRowCount
+} from './session-grid-slot-layout'
 import {
   createSessionGridWheelGesture,
   normalizeSessionGridWheelPixels,
@@ -48,6 +52,7 @@ export function useSessionGridScroll(args: {
   /** Last reachable position; the navigator shows `maxPosition + 1` stops. */
   maxPosition: number
   rowHeight: number
+  visibleRowCount: number
   handleScroll: () => void
   scrollToPosition: (targetIndex: number) => void
 } {
@@ -93,13 +98,20 @@ export function useSessionGridScroll(args: {
     () => computeSessionGridRowHeight(containerHeight, rowsPerView),
     [containerHeight, rowsPerView]
   )
+  const visibleRowCount = isPageMode
+    ? rowsPerView
+    : computeSessionGridVisibleRowCount(containerHeight, rowsPerView)
   // One position is a row in row mode and a viewport of rows in free mode. In
   // page mode it is one page, and a page is `h-full` — the container itself,
   // which is a gap taller than the rows it holds.
   const positionStepPx = isPageMode
     ? containerHeight
-    : (rowHeight + SESSION_GRID_ROW_GAP_PX) * (isRowMode ? 1 : rowsPerView)
-  const maxPosition = isRowMode ? Math.max(0, totalRowCount - rowsPerView) : totalPageCount - 1
+    : (rowHeight + SESSION_GRID_ROW_GAP_PX) * (isRowMode ? 1 : visibleRowCount)
+  const maxPosition = isRowMode
+    ? Math.max(0, totalRowCount - visibleRowCount)
+    : isFreeMode
+      ? Math.max(0, Math.ceil(totalRowCount / visibleRowCount) - 1)
+      : totalPageCount - 1
   const clampPosition = useCallback(
     (position: number) => Math.min(maxPosition, Math.max(0, position)),
     [maxPosition]
@@ -213,6 +225,7 @@ export function useSessionGridScroll(args: {
         : currentPosition * rowsPerView,
     maxPosition,
     rowHeight,
+    visibleRowCount,
     handleScroll: syncPositionFromScroll,
     scrollToPosition
   }

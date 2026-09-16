@@ -244,20 +244,20 @@ describe('quarantineRejectedPersistedUIWriteFields', () => {
     ).toEqual({ showSleepingWorkspaces: false })
   })
 
-  it('falls back to the host-gated members when the message names no key', () => {
+  it('keeps gated members dirty when the message names no unknown key', () => {
     const error = Object.assign(new Error('invalid_argument'), { code: 'invalid_argument' })
     expect(
       quarantineRejectedPersistedUIWriteFields(error, {
         sidebarWidth: 300,
         sessionsGridPreset: '3x2'
       })
-    ).toEqual({ sessionsGridPreset: '3x2' })
+    ).toBeNull()
   })
 
-  it('quarantines the whole batch when nothing narrower can be blamed', () => {
+  it('keeps the whole batch dirty when no unknown key is identified', () => {
     const error = Object.assign(new Error('invalid_argument'), { code: 'invalid_argument' })
     expect(
       quarantineRejectedPersistedUIWriteFields(error, { sidebarWidth: 300, groupBy: 'none' })
-    ).toEqual({ sidebarWidth: 300, groupBy: 'none' })
+    ).toBeNull()
   })
 })

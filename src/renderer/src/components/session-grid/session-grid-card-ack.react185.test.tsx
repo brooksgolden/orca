@@ -427,6 +427,7 @@ describe('session-grid card ack (React #185)', () => {
     })
 
     expect(useAppStore.getState().activeSessionGridTabId).toBe('tab-2')
+    expect(useAppStore.getState().activeSessionGridWorktreeId).toBe(WT_ID)
     expect(useAppStore.getState().unreadTerminalTabs['tab-2']).toBeUndefined()
   })
 

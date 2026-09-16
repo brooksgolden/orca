@@ -32,6 +32,8 @@ export type QuickLaunchAgentMenuItemsProps = {
   onLaunched: (tabId: string) => void
   /** The launch surface owns navigation to the created native chat. */
   onStructuredLaunched?: (sessionId: string) => void
+  /** Host publication has no local tab ID; the picker can close after dispatch. */
+  onHostPublished?: () => void
   /** Optional initial prompt forwarded to `launchAgentInNewTab`. When set,
    *  the picked agent boots with this prompt — argv/flag agents auto-submit,
    *  followup-path agents land it as a draft for the user to confirm. */
@@ -147,6 +149,7 @@ export function useQuickLaunchAgents({
   groupId,
   onLaunched,
   onStructuredLaunched,
+  onHostPublished,
   prompt,
   promptDelivery,
   launchSource,
@@ -203,6 +206,10 @@ export function useQuickLaunchAgents({
         )
         return
       }
+      if (result.surface.kind === 'host-published') {
+        onHostPublished?.()
+        return
+      }
       if (result.surface.kind !== 'local-terminal') {
         if (result.structuredSettlement && onStructuredLaunched) {
           void result.structuredSettlement.then((settlement) => {
@@ -248,6 +255,7 @@ export function useQuickLaunchAgents({
       groupId,
       onLaunched,
       onStructuredLaunched,
+      onHostPublished,
       prompt,
       promptDelivery,
       launchSource,

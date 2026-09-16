@@ -5,8 +5,8 @@ import {
   makeWorktree as makeGridTestWorktree
 } from '@/components/worktree-jump-palette-test-fixtures'
 import { makeTerminalTab as makeGridTestTerminalTab } from '@/store/slices/worktrees-slice-test-fixtures'
-import { describe, expect, it } from 'vitest'
-import { act, renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { act, cleanup, renderHook } from '@testing-library/react'
 import { useAppStore } from '@/store'
 import { useSessionsGridItems } from './use-sessions-grid-items'
 import { i18n } from '@/i18n/i18n'
@@ -14,6 +14,84 @@ import { livePtyIdsFor } from './session-grid-test-live-ptys'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import type { Repo } from '../../../../shared/repo-types'
+
+const initialState = useAppStore.getInitialState()
+beforeEach(() => useAppStore.setState(initialState, true))
+afterEach(() => {
+  cleanup()
+  useAppStore.setState(initialState, true)
+})
+
+function seedWorkspaceSessions(): void {
+  const repos: Repo[] = [
+    makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' }),
+    makeGridTestRepo({ id: 'repo-2', displayName: 'orca', path: '/code/orca' })
+  ]
+
+  const worktreesByRepo: Record<string, Worktree[]> = {
+    'repo-1': [
+      makeGridTestWorktree('grid-fixture', '', {
+        path: '',
+        id: 'wt-1',
+        displayName: 'sytio',
+        branch: 'solidez/base'
+      })
+    ],
+    'repo-2': [
+      makeGridTestWorktree('grid-fixture', '', {
+        path: '',
+        id: 'wt-2',
+        displayName: 'orca-feature',
+        branch: 'feat/grid'
+      })
+    ]
+  }
+
+  const tabsByWorktree: Record<string, TerminalTab[]> = {
+    'wt-1': [
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-1',
+        ptyId: 'pty-1',
+        worktreeId: 'wt-1',
+        title: 'Session',
+        createdAt: 100
+      }),
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-2',
+        ptyId: 'pty-2',
+        worktreeId: 'wt-1',
+        title: 'Base de conocimiento contrato 21%',
+        createdAt: 200
+      })
+    ],
+    'wt-2': [
+      makeGridTestTerminalTab({
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        id: 'tab-3',
+        ptyId: 'pty-3',
+        worktreeId: 'wt-2',
+        title: 'Term 3',
+        createdAt: 300
+      })
+    ]
+  }
+
+  useAppStore.setState({
+    repos,
+    worktreesByRepo,
+    tabsByWorktree,
+    ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
+    sessionsGridFilter: 'all'
+  })
+}
 
 describe('useSessionsGridItems', () => {
   it('refreshes translated filter labels when the language changes without session activity', async () => {
@@ -31,74 +109,7 @@ describe('useSessionsGridItems', () => {
     }
   })
   it('collects sessions from multiple worktrees and builds filter options', () => {
-    const repos: Repo[] = [
-      makeGridTestRepo({ id: 'repo-1', displayName: 'sytio', path: '/code/sytio' }),
-      makeGridTestRepo({ id: 'repo-2', displayName: 'orca', path: '/code/orca' })
-    ]
-
-    const worktreesByRepo: Record<string, Worktree[]> = {
-      'repo-1': [
-        makeGridTestWorktree('grid-fixture', '', {
-          path: '',
-          id: 'wt-1',
-          displayName: 'sytio',
-          branch: 'solidez/base'
-        })
-      ],
-      'repo-2': [
-        makeGridTestWorktree('grid-fixture', '', {
-          path: '',
-          id: 'wt-2',
-          displayName: 'orca-feature',
-          branch: 'feat/grid'
-        })
-      ]
-    }
-
-    const tabsByWorktree: Record<string, TerminalTab[]> = {
-      'wt-1': [
-        makeGridTestTerminalTab({
-          customTitle: null,
-          color: null,
-          sortOrder: 0,
-          id: 'tab-1',
-          ptyId: 'pty-1',
-          worktreeId: 'wt-1',
-          title: 'Session',
-          createdAt: 100
-        }),
-        makeGridTestTerminalTab({
-          customTitle: null,
-          color: null,
-          sortOrder: 0,
-          id: 'tab-2',
-          ptyId: 'pty-2',
-          worktreeId: 'wt-1',
-          title: 'Base de conocimiento contrato 21%',
-          createdAt: 200
-        })
-      ],
-      'wt-2': [
-        makeGridTestTerminalTab({
-          customTitle: null,
-          color: null,
-          sortOrder: 0,
-          id: 'tab-3',
-          ptyId: 'pty-3',
-          worktreeId: 'wt-2',
-          title: 'Term 3',
-          createdAt: 300
-        })
-      ]
-    }
-
-    useAppStore.setState({
-      repos,
-      worktreesByRepo,
-      tabsByWorktree,
-      ptyIdsByTabId: livePtyIdsFor(tabsByWorktree),
-      sessionsGridFilter: 'all'
-    })
+    seedWorkspaceSessions()
 
     const { result } = renderHook(() => useSessionsGridItems())
 
@@ -124,6 +135,7 @@ describe('useSessionsGridItems', () => {
   })
 
   it('filters items when activeFilter is set to a specific worktree', () => {
+    seedWorkspaceSessions()
     useAppStore.setState({
       sessionsGridFilter: 'wt-1'
     })

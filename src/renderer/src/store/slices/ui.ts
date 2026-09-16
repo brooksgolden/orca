@@ -29,12 +29,13 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (write, ge
   const set: typeof write = (partial, replace?) => {
     const update = (state: AppState): AppState | Partial<AppState> => {
       const next = typeof partial === 'function' ? partial(state) : partial
-      // Explicit entry (including reopen) and exit clear the visit before attention subscribers see it.
+      // View transitions clear the visit before attention subscribers see it.
       if (
         next.activeView !== undefined &&
+        next.activeView !== state.activeView &&
         (next.activeView === 'sessions' || state.activeView === 'sessions')
       ) {
-        return { ...next, activeSessionGridTabId: null }
+        return { ...next, activeSessionGridTabId: null, activeSessionGridWorktreeId: null }
       }
       return next
     }

@@ -1,6 +1,7 @@
 // A grid card's terminal re-claims its PTY grid after every zoom change: the rendered screen spans
 // the box to within one cell with no scale transform, rather than a stale grid scaled to fit.
 
+import { writeFileSync } from 'node:fs'
 import type { Page } from '@stablyai/playwright-test'
 import { expect, test } from './helpers/orca-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
@@ -13,6 +14,8 @@ type CardFit = {
   screenWidth: number
   cellWidth: number
   transform: string
+  claim: string
+  snapshot: string
 }
 
 async function readCardFits(page: Page): Promise<CardFit[]> {
@@ -88,4 +91,93 @@ test('cards re-negotiate their columns after a zoom change', async ({ orcaPage }
 
   await orcaPage.evaluate(() => window.__store!.getState().setSessionsGridZoom(1.2))
   await expectEveryCardFilled(orcaPage, 'zoom 1.2')
+})
+
+test('short windows keep row cards readable and the last row reachable', async ({
+  orcaPage,
+  electronApp
+}, testInfo) => {
+  await waitForSessionReady(orcaPage)
+  const worktreeId = await waitForActiveWorktree(orcaPage)
+  await electronApp.evaluate(({ BrowserWindow }) => {
+    if (BrowserWindow.getAllWindows().some((window) => window.isVisible())) {
+      throw new Error('Validation windows must remain hidden')
+    }
+  })
+  const cdp = await orcaPage.context().newCDPSession(orcaPage)
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    width: 1000,
+    height: 420,
+    deviceScaleFactor: 1,
+    mobile: false
+  })
+  await orcaPage.emulateMedia({ reducedMotion: 'reduce' })
+  const lastTabId = await orcaPage.evaluate(async (worktreeId) => {
+    const store = window.__store!
+    const state = store.getState()
+    await state.updateSettings({ uiLanguage: 'en' })
+    const existing = state.tabsByWorktree[worktreeId] ?? []
+    let lastTabId = existing.at(-1)?.id ?? ''
+    for (let i = existing.length; i < 9; i += 1) {
+      const tab = state.createTab(worktreeId, undefined, undefined, {
+        activate: false,
+        id: `short-grid-${i}`
+      })
+      if (tab) {
+        lastTabId = tab.id
+      }
+    }
+    store.setState({
+      sessionsGridPreset: '3x3',
+      sessionsGridScrollMode: 'row',
+      sessionsGridShowEmpty: false,
+      sessionsGridFilter: worktreeId
+    })
+    state.openSessionsPage()
+    return lastTabId
+  }, worktreeId)
+  for (const mode of ['row', 'free'] as const) {
+    await orcaPage.evaluate(
+      (mode) => window.__store!.getState().setSessionsGridScrollMode(mode),
+      mode
+    )
+    await orcaPage
+      .locator('#session-grid-scroll-container')
+      .evaluate((el) => el.scrollTo({ top: 0, behavior: 'auto' }))
+    const next = orcaPage.getByRole('button', { name: 'Next page', exact: true })
+    await expect(next).toBeEnabled()
+    await expect
+      .poll(() =>
+        orcaPage
+          .locator(CARD)
+          .first()
+          .evaluate((el) => el.getBoundingClientRect().height)
+      )
+      .toBeGreaterThanOrEqual(200)
+    await next.click()
+    await next.click()
+    await expect(next).toBeDisabled()
+    const lastCard = orcaPage.locator(`${CARD}[data-tab-id="${lastTabId}"]`)
+    await expect(lastCard).toBeInViewport({ ratio: 0.9 })
+  }
+  const lastCard = orcaPage.locator(`${CARD}[data-tab-id="${lastTabId}"]`)
+  await expect(lastCard.locator('.xterm')).toBeVisible({ timeout: 20_000 })
+  await lastCard.locator('.xterm').click()
+  await orcaPage.keyboard.type('echo readable-last-row')
+  await orcaPage.keyboard.press('Enter')
+  await expect(lastCard).toContainText('readable-last-row')
+  for (const theme of ['dark', 'light'] as const) {
+    await orcaPage.evaluate(
+      async (theme) => window.__store!.getState().updateSettings({ theme }),
+      theme
+    )
+    await expect
+      .poll(() => orcaPage.evaluate(() => document.documentElement.classList.contains('dark')))
+      .toBe(theme === 'dark')
+    const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' })
+    const screenshotPath = testInfo.outputPath(`short-grid-${theme}.png`)
+    writeFileSync(screenshotPath, Buffer.from(data, 'base64'))
+    await testInfo.attach(`short-grid-${theme}`, { path: screenshotPath, contentType: 'image/png' })
+  }
+  await cdp.detach()
 })

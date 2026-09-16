@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createUIStore } from './ui-slice-test-harness'
+import { createUIStore, makePersistedUI } from './ui-slice-test-harness'
 
 /**
  * The grid's selected card is what `useAutoAckViewedAgent` treats as "the user is looking at
@@ -14,6 +14,15 @@ describe('the session grid selection outlives nothing', () => {
     store.getState().setActiveSessionGridTabId('tab-a')
     store.getState().openSessionsPage()
     expect(store.getState().activeSessionGridTabId).toBeNull()
+  })
+
+  it('preserves a selected card when sync changes preferences without changing view', () => {
+    const store = createUIStore()
+    store.getState().openSessionsPage()
+    store.getState().setActiveSessionGridTabId('tab-a')
+    store.getState().hydratePersistedUI(makePersistedUI({ sidebarWidth: 320 }), 'sync')
+    expect(store.getState().activeView).toBe('sessions')
+    expect(store.getState().activeSessionGridTabId).toBe('tab-a')
   })
 
   it('clears history selections atomically on generic view transitions', () => {

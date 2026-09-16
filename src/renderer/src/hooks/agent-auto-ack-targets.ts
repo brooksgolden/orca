@@ -1,12 +1,12 @@
 import type { SessionGridFilter } from '../../../shared/session-grid-types'
 import type { TerminalTab } from '../../../shared/terminal-tab-types'
-import { resolveActiveTabOwnerWorktreeId } from '@/store/slices/active-tab-owner-worktree'
 import { FLOATING_TERMINAL_WORKTREE_ID } from '../../../shared/constants'
 
 export type AutoAckTabTarget = { tabId: string; worktreeId: string | null }
 
 function sessionGridSelectionOnTheBoard(
   state: {
+    activeSessionGridWorktreeId?: string | null
     activeWorktreeId: string | null
     sessionsGridFilter: SessionGridFilter
     sessionsGridHiddenTabIds: readonly string[]
@@ -17,14 +17,18 @@ function sessionGridSelectionOnTheBoard(
   if (state.sessionsGridHiddenTabIds.includes(tabId)) {
     return null
   }
-  // The card's own worktree, not the sidebar's selection: the grid lists every workspace.
-  const worktreeId = resolveActiveTabOwnerWorktreeId(
-    state.tabsByWorktree,
-    state.activeWorktreeId,
-    tabId
-  )
-  // Null means no open session owns the tab any more: it was closed out from under the pick.
-  if (!worktreeId) {
+  // A removed card cannot transfer its acknowledgement to another workspace's duplicate.
+  let worktreeId = state.activeSessionGridWorktreeId
+  if (worktreeId == null) {
+    const owners = Object.keys(state.tabsByWorktree).filter((id) =>
+      state.tabsByWorktree[id].some((tab) => tab.id === tabId)
+    )
+    if (owners.length !== 1) {
+      return null
+    }
+    worktreeId = owners[0]
+  }
+  if (!worktreeId || !state.tabsByWorktree[worktreeId]?.some((tab) => tab.id === tabId)) {
     return null
   }
   // Why the length check: a filter naming a workspace with no open session is one the grid
@@ -47,6 +51,7 @@ export function resolveAutoAckTabTargets(
   state: {
     activeView: string
     activeTabId: string | null
+    activeSessionGridWorktreeId?: string | null
     activeWorktreeId: string | null
     activeTabIdByWorktree: Record<string, string | null>
     activeSessionGridTabId: string | null

@@ -73,6 +73,16 @@ async function toHostUiUpdate(updates: Partial<PersistedUIState>): Promise<objec
   return omitUnsupportedHostGatedUiFields(hostUpdates, await readHostUiCapabilities())
 }
 
+async function writeHostUiUpdate(updates: Partial<PersistedUIState>): Promise<void> {
+  const environmentId = requireActiveEnvironmentOrNull()?.id
+  const hostUpdates = await toHostUiUpdate(updates)
+  // Discovery and mutation must refer to the same paired host.
+  if (requireActiveEnvironmentOrNull()?.id !== environmentId) {
+    throw new Error('UI persistence environment changed during capability discovery')
+  }
+  await callRuntimeResult('ui.set', hostUpdates, 15_000)
+}
+
 export function createWebUiApi(): NonNullable<Partial<PreloadApi>['ui']> {
   let zoomLevel = readLocalWebUIState().uiZoomLevel
   return {
@@ -104,7 +114,7 @@ export function createWebUiApi(): NonNullable<Partial<PreloadApi>['ui']> {
       writeJson(UI_STORAGE_KEY, next)
       zoomLevel = next.uiZoomLevel
       try {
-        await callRuntimeResult('ui.set', await toHostUiUpdate(updates), 15_000)
+        await writeHostUiUpdate(updates)
       } catch {
         // Why: unpaired/offline web clients still need local UI persistence.
       }
@@ -116,7 +126,7 @@ export function createWebUiApi(): NonNullable<Partial<PreloadApi>['ui']> {
       const next = mergeWebUIState(readLocalWebUIState(), updates)
       writeJson(UI_STORAGE_KEY, next)
       zoomLevel = next.uiZoomLevel
-      await callRuntimeResult('ui.set', await toHostUiUpdate(updates), 15_000)
+      await writeHostUiUpdate(updates)
     },
     recordFeatureInteraction: async (id: FeatureInteractionId) => {
       const current = readLocalWebUIState()

@@ -5,7 +5,7 @@ import type { SessionGridWorktreeCatalog } from './session-grid-worktree-catalog
 import type { SessionGridFilter, SessionGridItem } from '../../../../shared/session-grid-types'
 
 export type SessionGridCardActions = {
-  onFocus: (tabId: string) => void
+  onFocus: (tabId: string, worktreeId: string) => void
   onMaximize: (item: SessionGridItem) => void
   onClose: (tabId: string) => void
   onToggleHidden: (tabId: string) => void
@@ -20,6 +20,7 @@ export type SessionGridLayoutProps = {
   setScrollContainer: (element: HTMLDivElement | null) => void
   onScroll: () => void
   activeSessionGridTabId: string | null
+  activeSessionGridWorktreeId: string | null
   activeFilter: SessionGridFilter
   defaultWorktreeId: string | undefined
   worktreeCatalog: SessionGridWorktreeCatalog
@@ -35,6 +36,7 @@ export function SessionGridSlots({
   emptySlotKeyPrefix,
   renderedTabIds,
   activeSessionGridTabId,
+  activeSessionGridWorktreeId,
   activeFilter,
   defaultWorktreeId,
   worktreeCatalog,
@@ -43,6 +45,7 @@ export function SessionGridSlots({
 }: Pick<
   SessionGridLayoutProps,
   | 'activeSessionGridTabId'
+  | 'activeSessionGridWorktreeId'
   | 'activeFilter'
   | 'defaultWorktreeId'
   | 'worktreeCatalog'
@@ -58,10 +61,13 @@ export function SessionGridSlots({
   return (
     <>
       {items.map((item) => (
-        <div key={item.tabId} className="h-full min-h-0 min-w-0">
+        <div key={`${item.worktreeId}:${item.tabId}`} className="h-full min-h-0 min-w-0">
           <SortableSessionGridCard
             item={item}
-            isActive={activeSessionGridTabId === item.tabId}
+            isActive={
+              activeSessionGridTabId === item.tabId &&
+              activeSessionGridWorktreeId === item.worktreeId
+            }
             previewMounted={renderedTabIds.has(item.tabId)}
             actions={actions}
           />

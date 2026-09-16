@@ -7,6 +7,7 @@ import {
 
 import '@testing-library/jest-dom/vitest'
 import type { ReactNode } from 'react'
+import type { AgentLaunchSurface } from '@/lib/agent-tab-launch-contract'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { useAppStore } from '@/store'
@@ -14,7 +15,7 @@ import { buildSessionGridWorktreeCatalog } from './session-grid-worktree-catalog
 import { SessionGridLaunchPopoverContent } from './SessionGridLaunchPicker'
 
 const harness = vi.hoisted(() => ({
-  launchAgentInNewTab: vi.fn((_args: Record<string, unknown>) => ({
+  launchAgentInNewTab: vi.fn((_args: Record<string, unknown>): { surface: AgentLaunchSurface } => ({
     surface: { kind: 'local-terminal', tabId: 'tab-new' }
   })),
   backgroundMount: vi.fn(),
@@ -403,6 +404,15 @@ describe('SessionGridLaunchPopoverContent', () => {
         })
       )
       expect(harness.onDone).toHaveBeenCalledTimes(1)
+    })
+
+    it('closes after a host-published launch without inventing a local tab', () => {
+      harness.launchAgentInNewTab.mockReturnValueOnce({ surface: { kind: 'host-published' } })
+      renderBothHosts()
+      fireEvent.click(rowForHost('ssh:conn-1'))
+      fireEvent.click(screen.getByRole('option', { name: 'Gemini' }))
+      expect(harness.onDone).toHaveBeenCalledOnce()
+      expect(harness.backgroundMount).not.toHaveBeenCalled()
     })
 
     it('opens a plain shell on the host whose row it was picked from', () => {

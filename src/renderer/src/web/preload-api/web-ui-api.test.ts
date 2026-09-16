@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_GRID_UI_FIELDS_RUNTIME_CAPABILITY } from '../../../../shared/host-gated-ui-fields'
 
 const runtime = vi.hoisted(() => ({
+  environmentId: 'env-1',
   callRuntimeResult: vi.fn(),
   getRemoteRuntimeStatus: vi.fn()
 }))
@@ -10,7 +11,7 @@ const runtime = vi.hoisted(() => ({
 vi.mock('./web-runtime-calls', () => runtime)
 vi.mock('./web-runtime-session', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  requireActiveEnvironmentOrNull: () => ({ id: 'env-1' })
+  requireActiveEnvironmentOrNull: () => ({ id: runtime.environmentId })
 }))
 
 import { createWebUiApi, resetHostUiCapabilitiesForTest } from './web-ui-api'
@@ -23,6 +24,7 @@ function sentUiSetPayloads(): unknown[] {
 
 describe('web ui.set host-gated keys', () => {
   beforeEach(() => {
+    runtime.environmentId = 'env-1'
     window.localStorage.clear()
     resetHostUiCapabilitiesForTest()
     runtime.callRuntimeResult.mockReset().mockResolvedValue(undefined)
@@ -65,6 +67,24 @@ describe('web ui.set host-gated keys', () => {
     expect(runtime.getRemoteRuntimeStatus).toHaveBeenCalledTimes(1)
     expect(sentUiSetPayloads()).toEqual([{ sessionsGridZoom: 1.1 }, { sessionsGridZoom: 1.2 }])
   })
+
+  it.each(['set', 'setWithAck'] as const)(
+    'does not send %s to another environment after discovery',
+    async (method) => {
+      runtime.getRemoteRuntimeStatus.mockImplementation(async () => {
+        runtime.environmentId = 'env-2'
+        return { capabilities: [SESSION_GRID_UI_FIELDS_RUNTIME_CAPABILITY] }
+      })
+      const api = createWebUiApi()
+      const write = api[method]!({ sessionsGridZoom: 1.2 })
+      await (method === 'setWithAck' ? expect(write).rejects.toThrow('environment changed') : write)
+      expect(sentUiSetPayloads()).toEqual([])
+      runtime.getRemoteRuntimeStatus.mockResolvedValue({ capabilities: [] })
+      await api.setWithAck!({ sidebarWidth: 300, sessionsGridZoom: 1.2 })
+      expect(sentUiSetPayloads()).toEqual([{ sidebarWidth: 300 }])
+      expect(runtime.getRemoteRuntimeStatus).toHaveBeenCalledTimes(2)
+    }
+  )
 
   it('keeps stripping pairing-local keys alongside the gate', async () => {
     runtime.getRemoteRuntimeStatus.mockResolvedValue({ capabilities: [] })

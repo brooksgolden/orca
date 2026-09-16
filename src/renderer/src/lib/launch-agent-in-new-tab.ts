@@ -23,7 +23,7 @@ import {
 import { resolveLocalWindowsAgentStartupShell } from '../../../shared/windows-terminal-shell'
 import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
 import { seedCommandCodeSubmittedPromptStatus } from '@/lib/command-code-prompt-status-seed'
-import { parseExecutionHostId } from '../../../shared/execution-host'
+import { getRepoSshConnectionId, parseExecutionHostId } from '../../../shared/execution-host'
 import { getConnectionIdFromState } from '@/lib/connection-context'
 import { findRepoForHost } from '@/store/slices/repo-host-identity'
 import { resolveInitialNativeChatSessionOptions } from '@/components/native-chat/native-chat-launch-session-options'
@@ -89,11 +89,14 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
       ? findRepoForHost(store.repos ?? [], worktree.repoId, { hostId: executionHostId })
       : store.repos?.find((entry) => entry.id === worktree.repoId)
     : null
-  // Why: `store.repos.find` is host-blind and the same repo id can exist on local, SSH and runtime
-  // hosts, so the row it returns can belong to a different host than the worktree names (#11163).
-  // The shared resolver answers from the worktree's own host; `undefined` (rival rows disagree) is
-  // not evidence of a remote, and main rejects that launch anyway.
-  const worktreeSshConnectionId = getConnectionIdFromState(store, worktreeId)
+  // A selected host must not be re-resolved through an ambiguous workspace ID.
+  const worktreeSshConnectionId = selectedHost
+    ? selectedHost.kind === 'ssh'
+      ? selectedHost.targetId
+      : repo
+        ? getRepoSshConnectionId(repo)
+        : null
+    : getConnectionIdFromState(store, worktreeId)
   const resolvedLaunchPlatform =
     launchPlatform ??
     (repo
@@ -209,6 +212,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   if (plan?.route === 'structured-native-chat') {
     const structured = launchAgentInStructuredNewTab({
       plan,
+      activate,
       ...(beforeSurfaceOpen
         ? {
             beforeOpen: (sessionId: string) =>

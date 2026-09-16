@@ -21,9 +21,9 @@ function stubReducedMotion(reduce: boolean): void {
   }))
 }
 
-function makeContainer(): HTMLDivElement {
+function makeContainer(height = CONTAINER_HEIGHT): HTMLDivElement {
   const el = document.createElement('div')
-  Object.defineProperty(el, 'clientHeight', { value: CONTAINER_HEIGHT })
+  Object.defineProperty(el, 'clientHeight', { value: height })
   let scrollTop = 0
   Object.defineProperty(el, 'scrollTop', {
     get: () => scrollTop,
@@ -135,6 +135,25 @@ describe('useSessionGridScroll', () => {
       )
     }
   )
+
+  it.each(['row', 'free'] as const)('can reach the last row in a short %s viewport', (mode) => {
+    const container = makeContainer(300)
+    const { result } = renderHook(() => {
+      const scroll = useSessionGridScroll({
+        mode,
+        rowsPerView: 3,
+        totalRowCount: 3,
+        totalPageCount: 1
+      })
+      const { setScrollContainer } = scroll
+      useLayoutEffect(() => setScrollContainer(container), [setScrollContainer])
+      return scroll
+    })
+    expect(result.current.rowHeight).toBe(200)
+    expect(result.current.maxPosition).toBe(2)
+    act(() => result.current.scrollToPosition(2))
+    expect(container.scrollTop).toBe(424)
+  })
 
   it('steps one full container per page, which is taller than its rows', () => {
     const { container, result } = mount('page')

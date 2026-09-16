@@ -136,6 +136,7 @@ describe('SessionsGridPage', () => {
 
   afterEach(() => {
     cleanup()
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     previewHarness.ptyGoneByPtyId.clear()
     backgroundMountHarness.request.mockClear()
@@ -242,7 +243,6 @@ describe('SessionsGridPage', () => {
     fireEvent.click(screen.getByTestId('session-grid-load-session'))
     expect(backgroundMountHarness.request).toHaveBeenCalledTimes(3)
     expect(screen.getByText('Starting session…')).toBeInTheDocument()
-    vi.useRealTimers()
   })
 
   it('renders empty state when there are no active sessions', () => {

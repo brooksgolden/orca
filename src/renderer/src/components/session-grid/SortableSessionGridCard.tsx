@@ -20,8 +20,11 @@ export const SortableSessionGridCard = memo(function SortableSessionGridCard({
   previewMounted,
   actions
 }: SortableSessionGridCardProps): React.JSX.Element {
-  const { tabId } = item
-  const onFocus = useCallback(() => actions.onFocus(tabId), [actions, tabId])
+  const { tabId, worktreeId } = item
+  const onFocus = useCallback(
+    () => actions.onFocus(tabId, worktreeId),
+    [actions, tabId, worktreeId]
+  )
   // The whole item: maximizing needs the pane key too, to focus and ack the leaf on screen.
   const onMaximize = useCallback(() => actions.onMaximize(item), [actions, item])
   const onClose = useCallback(() => actions.onClose(tabId), [actions, tabId])

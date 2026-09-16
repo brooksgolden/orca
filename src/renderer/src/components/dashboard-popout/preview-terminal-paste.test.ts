@@ -118,6 +118,39 @@ describe('createPreviewClipboardPaster', () => {
     expect(terminal.input).not.toHaveBeenCalled()
   })
 
+  it.each(['focus', 'disposed', 'connection', 'runtime'] as const)(
+    'never saves an image when %s changes during the text read',
+    async (change) => {
+      terminalInput = {
+        hostPlatform: 'linux',
+        localWindowsConpty: false,
+        windowsShiftEnterEncoding: 'alt-enter',
+        ctrlEnterCsiU: false,
+        kittyKeyboardAdvertised: true,
+        connectionId: 'conn-1',
+        runtimeEnvironmentId: 'env-1'
+      }
+      readClipboardText.mockImplementation(async () => {
+        if (change === 'focus') {
+          focusTarget.blur()
+        }
+        if (change === 'disposed') {
+          disposed = true
+        }
+        if (terminalInput && change === 'connection') {
+          terminalInput = { ...terminalInput, connectionId: 'conn-2' }
+        }
+        if (terminalInput && change === 'runtime') {
+          terminalInput = { ...terminalInput, runtimeEnvironmentId: 'env-2' }
+        }
+        return ''
+      })
+      await paste()
+      expect(saveClipboardImageAsTempFile).not.toHaveBeenCalled()
+      expect(terminal.input).not.toHaveBeenCalled()
+    }
+  )
+
   it('drops the paste when the terminal is disposed during the clipboard read', async () => {
     readClipboardText.mockImplementation(async () => {
       disposed = true
