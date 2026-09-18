@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { makeProjectGroup } from '@/components/worktree-jump-palette-test-fixtures'
 import {
+  makeProjectGroup,
   makeRepo as makeGridTestRepo,
   makeWorktree as makeGridTestWorktree
 } from '@/components/worktree-jump-palette-test-fixtures'

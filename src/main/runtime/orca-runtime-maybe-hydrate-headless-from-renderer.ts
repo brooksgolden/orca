@@ -59,6 +59,9 @@ export class OrcaRuntimeWithMaybeHydrateHeadlessFromRenderer extends OrcaRuntime
       let candidate: RuntimeHeadlessTerminal | undefined
       let committed = false
       try {
+        if (!isCurrent()) {
+          return
+        }
         const rendered = await controller.serializeBuffer!(ptyId, {
           scrollbackRows: MOBILE_SUBSCRIBE_SCROLLBACK_ROWS
         })
