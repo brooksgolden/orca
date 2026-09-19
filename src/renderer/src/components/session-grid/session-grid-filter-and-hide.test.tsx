@@ -267,6 +267,29 @@ describe('session grid filter and hide', () => {
     expect(toolbar.querySelector('[class*="overflow-x-auto"]')).toBeNull()
   })
 
+  it('shows each workspace row the sidebar agent cluster, and the all row none', () => {
+    seedCards(3, { 0: 'working', 1: 'working', 2: 'blocked' })
+    render(<SessionsGridPage />)
+
+    // Radix Popover toggles on click, unlike the view menu's pointerdown.
+    fireEvent.click(screen.getByTestId('session-grid-workspace-picker'))
+    const rows = screen.getAllByTestId('session-grid-workspace-option')
+    const allRow = rows.find((row) => row.getAttribute('data-value') === 'all')!
+    const wtRow = rows.find((row) => row.getAttribute('data-value') === 'wt-1')!
+
+    expect(allRow.querySelector('[data-testid="session-grid-workspace-agents"]')).toBeNull()
+    const cluster = wtRow.querySelector<HTMLElement>(
+      '[data-testid="session-grid-workspace-agents"]'
+    )!
+    expect(cluster).not.toBeNull()
+    // Same shape as the sidebar pill: one dot per state, one icon per agent variety inside
+    // it, so two claude agents working collapse to one glyph and a +1.
+    expect(cluster.querySelectorAll('[aria-label="Working"]')).toHaveLength(1)
+    expect(cluster.querySelectorAll('[aria-label="Blocked"]')).toHaveLength(1)
+    expect(cluster.querySelectorAll('svg')).toHaveLength(2)
+    expect(cluster).toHaveTextContent('+1')
+  })
+
   it('keeps the card header and the tab bar menu on the same answer', () => {
     const tabs = seedCards(2)
     render(<SessionsGridPage />)

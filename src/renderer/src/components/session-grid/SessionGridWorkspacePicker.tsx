@@ -14,6 +14,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { FilterOptionCount } from '../dashboard-popout/FilterOptionCount'
+import { CompactAgentSummaryCluster } from '../sidebar/worktree-card-compact-agents'
+import { summarizeAgentIdentities } from '../sidebar/worktree-card-agent-summary'
+import { useWorktreeAgentRows } from '../sidebar/useWorktreeAgentRows'
 import type { SessionGridFilterOption } from './session-grid-items-builder'
 import {
   sessionGridBranchMeta,
@@ -55,6 +58,23 @@ function groupScopeOptions(
     }
   }
   return [...ordered, ...byKey.values()]
+}
+
+/** The sidebar's collapsed agent pill, per row: which agents live there, in what state. */
+function WorkspaceAgentCluster({ worktreeId }: { worktreeId: string }): React.JSX.Element | null {
+  const agents = useWorktreeAgentRows(worktreeId)
+  if (agents.length === 0) {
+    return null
+  }
+  return (
+    <span
+      className="inline-flex shrink-0"
+      title={summarizeAgentIdentities(agents)}
+      data-testid="session-grid-workspace-agents"
+    >
+      <CompactAgentSummaryCluster agents={agents} />
+    </span>
+  )
 }
 
 /**
@@ -198,12 +218,16 @@ export function SessionGridWorkspacePicker({
                           · {branch}
                         </span>
                       ) : null}
-                      {entry?.hostLabel ? (
-                        <span className="ml-auto truncate pl-2 text-[10px] text-muted-foreground">
-                          {entry.hostLabel}
-                        </span>
-                      ) : null}
-                      <FilterOptionCount count={option.count} />
+                      {/* One right-aligned group, or three `ml-auto`s would split the slack. */}
+                      <span className="ml-auto flex shrink-0 items-center gap-2 pl-2">
+                        <WorkspaceAgentCluster worktreeId={option.id} />
+                        {entry?.hostLabel ? (
+                          <span className="truncate text-[10px] text-muted-foreground">
+                            {entry.hostLabel}
+                          </span>
+                        ) : null}
+                        <FilterOptionCount count={option.count} />
+                      </span>
                     </CommandItem>
                   )
                 })}
