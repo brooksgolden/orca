@@ -337,14 +337,13 @@ export function SessionGridViewMenu({
           }}
         >
           {SESSION_GRID_WHEEL_TARGETS.map((target) => (
-            <DropdownMenuRadioItem
-              key={target}
-              value={target}
-              className="flex flex-col items-start"
-            >
-              <span>{getWheelTargetLabels()[target]}</span>
-              <span className="text-[10px] font-normal text-muted-foreground">
-                <WheelTargetHint target={target} />
+            <DropdownMenuRadioItem key={target} value={target}>
+              {/* Own wrapper: the item's gap-2 is for icon|label, too wide between title and hint. */}
+              <span className="flex flex-col items-start gap-0.5">
+                <span>{getWheelTargetLabels()[target]}</span>
+                <span className="text-[10px] font-normal text-muted-foreground">
+                  <WheelTargetHint target={target} />
+                </span>
               </span>
             </DropdownMenuRadioItem>
           ))}
