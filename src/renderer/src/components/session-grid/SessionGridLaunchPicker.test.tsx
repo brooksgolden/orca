@@ -121,7 +121,7 @@ beforeEach(() => {
     settings: { ...getDefaultSettings('/tmp'), defaultTuiAgent: null, disabledTuiAgents: [] },
     createTab: harness.createTab,
     ensureDetectedAgents: vi.fn(),
-    ensureRemoteDetectedAgents: vi.fn(),
+    ensureRemoteDetectedAgents: vi.fn().mockResolvedValue([]),
     ensureRuntimeDetectedAgents: vi.fn()
   })
 })

@@ -420,19 +420,24 @@ describe('resolveAutoAckTabTargets', () => {
     tabsByWorktree: {
       'wt-1': [makeTab({ id: 'tab-1', worktreeId: 'wt-1' })],
       'wt-2': [makeTab({ id: GRID_TAB_ID, worktreeId: 'wt-2' })]
-    }
+    },
+    getActiveTab: () => null
   }
 
   it('scans the floating tab alongside the main tab while the panel is visible', () => {
     expect(resolveAutoAckTabTargets(baseState, { floatingPanelVisible: true })).toEqual([
-      { tabId: FLOATING_TAB_ID, worktreeId: FLOATING_TERMINAL_WORKTREE_ID },
-      { tabId: 'tab-1', worktreeId: 'wt-1' }
+      {
+        tabId: FLOATING_TAB_ID,
+        worktreeId: FLOATING_TERMINAL_WORKTREE_ID,
+        surfaceKind: 'terminal'
+      },
+      { tabId: 'tab-1', worktreeId: 'wt-1', surfaceKind: 'terminal' }
     ])
   })
 
   it('skips the floating tab while the panel is closed', () => {
     expect(resolveAutoAckTabTargets(baseState, { floatingPanelVisible: false })).toEqual([
-      { tabId: 'tab-1', worktreeId: 'wt-1' }
+      { tabId: 'tab-1', worktreeId: 'wt-1', surfaceKind: 'terminal' }
     ])
   })
 
@@ -442,7 +447,9 @@ describe('resolveAutoAckTabTargets', () => {
         { ...baseState, activeView: 'activity' },
         { floatingPanelVisible: true }
       )
-    ).toEqual([{ tabId: FLOATING_TAB_ID, worktreeId: FLOATING_TERMINAL_WORKTREE_ID }])
+    ).toEqual([
+      { tabId: FLOATING_TAB_ID, worktreeId: FLOATING_TERMINAL_WORKTREE_ID, surfaceKind: 'terminal' }
+    ])
   })
 
   it('scans nothing outside the terminal view with the panel closed', () => {
@@ -460,7 +467,9 @@ describe('resolveAutoAckTabTargets', () => {
         { ...baseState, activeTabId: FLOATING_TAB_ID },
         { floatingPanelVisible: true }
       )
-    ).toEqual([{ tabId: FLOATING_TAB_ID, worktreeId: FLOATING_TERMINAL_WORKTREE_ID }])
+    ).toEqual([
+      { tabId: FLOATING_TAB_ID, worktreeId: FLOATING_TERMINAL_WORKTREE_ID, surfaceKind: 'terminal' }
+    ])
   })
 
   // The grid lists every workspace, so the selected card's worktree is the one that owns
@@ -471,7 +480,7 @@ describe('resolveAutoAckTabTargets', () => {
         { ...baseState, activeView: 'sessions', activeSessionGridTabId: GRID_TAB_ID },
         { floatingPanelVisible: false }
       )
-    ).toEqual([{ tabId: GRID_TAB_ID, worktreeId: 'wt-2' }])
+    ).toEqual([{ tabId: GRID_TAB_ID, worktreeId: 'wt-2', surfaceKind: 'terminal' }])
   })
 
   // Opening the grid must not ack anything on its own: nine cards on screen are nine
@@ -491,7 +500,7 @@ describe('resolveAutoAckTabTargets', () => {
         { ...baseState, activeSessionGridTabId: GRID_TAB_ID },
         { floatingPanelVisible: false }
       )
-    ).toEqual([{ tabId: 'tab-1', worktreeId: 'wt-1' }])
+    ).toEqual([{ tabId: 'tab-1', worktreeId: 'wt-1', surfaceKind: 'terminal' }])
   })
 
   /**
@@ -518,7 +527,7 @@ describe('resolveAutoAckTabTargets', () => {
         { ...gridState, sessionsGridFilter: 'wt-2' },
         { floatingPanelVisible: false }
       )
-    ).toEqual([{ tabId: GRID_TAB_ID, worktreeId: 'wt-2' }])
+    ).toEqual([{ tabId: GRID_TAB_ID, worktreeId: 'wt-2', surfaceKind: 'terminal' }])
   })
 
   // A workspace filter naming somewhere with no sessions is not a filter the grid applies.
@@ -528,7 +537,7 @@ describe('resolveAutoAckTabTargets', () => {
         { ...gridState, sessionsGridFilter: 'wt-gone' },
         { floatingPanelVisible: false }
       )
-    ).toEqual([{ tabId: GRID_TAB_ID, worktreeId: 'wt-2' }])
+    ).toEqual([{ tabId: GRID_TAB_ID, worktreeId: 'wt-2', surfaceKind: 'terminal' }])
   })
 
   it('skips a selection the user hid from the grid', () => {

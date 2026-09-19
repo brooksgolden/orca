@@ -108,6 +108,7 @@ export function createTerminalTabCloseActions(
         const nextExpanded = omitByTabId(s.expandedPaneByTabId)
         const nextCanExpand = omitByTabId(s.canExpandPaneByTabId)
         const nextLayouts = omitByTabId(s.terminalLayoutsByTabId)
+        const nextLocalOnlyScrollback = omitByTabId(s.localOnlyScrollbackByTabId)
         const nextPtyIdsByTabId = omitByTabId(s.ptyIdsByTabId)
         const nextLastKnownRelay = omitByTabId(s.lastKnownRelayPtyIdByTabId)
         const nextDeferredSshSessionIdsByTabId = omitByTabId(s.deferredSshSessionIdsByTabId)
@@ -232,6 +233,7 @@ export function createTerminalTabCloseActions(
           expandedPaneByTabId: nextExpanded,
           canExpandPaneByTabId: nextCanExpand,
           terminalLayoutsByTabId: nextLayouts,
+          localOnlyScrollbackByTabId: nextLocalOnlyScrollback,
           pendingStartupByTabId: nextPendingStartupByTabId,
           automaticAgentResumeClaimsByTabId: nextAutomaticAgentResumeClaimsByTabId,
           nativeChatLaunchPromptByTabId: nextNativeChatLaunchPromptByTabId,

@@ -1415,6 +1415,9 @@
           "updateOne": "Update server",
           "updating": "Updating servers…"
         },
+        "RepositoryGitHubAccountSection": {
+          "retry": "Retry"
+        },
         "RepositoryHooksSection": {
           "0e0dd5b9a5": "loaded",
           "32f417fe17": "text-emerald-700 dark:text-emerald-300",
@@ -2667,7 +2670,8 @@
         "questionCount": "{{value0}} questions"
       },
       "composer": {
-        "effort": "Effort"
+        "effort": "Effort",
+        "imageUnsupported": "Image paste is not supported for this agent."
       },
       "question": {
         "other": "Other…"

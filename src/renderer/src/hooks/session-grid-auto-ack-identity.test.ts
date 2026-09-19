@@ -17,7 +17,7 @@ describe('selected grid workspace identity', () => {
     store.getState().setActiveSessionGridTabId('tab-1', 'wt-card')
     const state = store.getState()
     expect(resolveAutoAckTabTargets(state, { floatingPanelVisible: false })).toEqual([
-      { tabId: 'tab-1', worktreeId: 'wt-card' }
+      { tabId: 'tab-1', worktreeId: 'wt-card', surfaceKind: 'terminal' }
     ])
     expect(
       resolveAutoAckTabTargets(

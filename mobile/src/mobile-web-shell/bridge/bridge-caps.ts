@@ -29,11 +29,131 @@ export const BRIDGE_MAX_NODES = 20_000
 export const BRIDGE_MAX_METHOD_CHARS = 64
 
 /**
+ * The initial route bounds.
+ *
+ * The page writes this path into its own history before it renders, so it is held to what a path
+ * may be rather than to what a screen may want: rooted, carrying neither a query nor a fragment
+ * because the params are a field of their own, and made of segments that name something.
+ *
+ * Shape alone is not enough, because `replaceState` normalises what it is given and the page then
+ * renders whatever came out. A protocol-relative `//host` throws a cross-origin `SecurityError` and
+ * takes the mount down; `/../../etc` resolves to `/etc` and `/h/a\b` to `/h/a/b`, both of which
+ * escape the `/h/` prefix the page's route tree starts at and land on a screen nobody asked for.
+ * So: no empty segment, no dot segment, no backslash anywhere — none of which a route can produce.
+ * A dot segment counts however it is spelled: a URL parser percent-decodes the path before it
+ * resolves it, so `/h/%2e%2e/x` climbs out of the prefix exactly as `/h/../x` does. An escape
+ * inside a segment that names something (`/h/a%20b`, `/h/%2ex`) is text and stays allowed.
+ */
+export const BRIDGE_MAX_ROUTE_PATHNAME_CHARS = 1024
+export const BRIDGE_MAX_ROUTE_PARAMS = 32
+export const BRIDGE_MAX_ROUTE_PARAM_CHARS = 1024
+
+/**
+ * One segment of a route path, and the only place the rule is written.
+ *
+ * Exported as source rather than as a regex because it is embedded in more than one pattern: the
+ * `init` pathname and the hrefs a page hands back to the shell are the same vocabulary, and two
+ * spellings of it would be two rules that drift.
+ *
+ * Which is why the dot-segment lookahead ends a segment at `?` as well as at `/` and at the end of
+ * the string. A pathname carries no query, but an href does, so `/h/..?x` reaches the shared rule.
+ * The harm there is not the climb `replaceState` performs on the pathname: the href's sink is the
+ * native router, which resolves a dot segment only for an href beginning with `.` and otherwise
+ * matches segments literally, so `..` is taken as a value for `[hostId]` and the shell opens a host
+ * screen for an id no host has. Different screen, same reason to refuse it.
+ *
+ * Widening the boundary cannot loosen the pathname pattern, where a `?` fails the character class
+ * wherever it appears.
+ */
+export const BRIDGE_ROUTE_SEGMENT_SOURCE = String.raw`(?!(?:\.|%2[eE]){1,2}(?:[/?]|$))[^/\\?#\s]+`
+
+/** The path half both patterns start from: rooted, and made of segments that name something. */
+const ROUTE_PATH_SOURCE = `/(?:${BRIDGE_ROUTE_SEGMENT_SOURCE}(?:/${BRIDGE_ROUTE_SEGMENT_SOURCE})*/?)?`
+
+export const BRIDGE_ROUTE_PATHNAME_PATTERN = new RegExp(`^${ROUTE_PATH_SOURCE}$`)
+
+/** A `navigate` target: the same path, plus the query the screen is opened with. Still no
+ *  fragment — the shell matches on a pathname, and a `#` is the page's own business.
+ *
+ *  Shape only. Whether the target names a screen the app actually has is a different question and
+ *  a later one: with no `+not-found` file, expo-router's Unmatched paints over the shell for a
+ *  well-formed path nobody routes. C1.7 owns that check. */
+export const BRIDGE_ROUTE_HREF_PATTERN = new RegExp(
+  String.raw`^${ROUTE_PATH_SOURCE}(?:\?[^#\s]*)?$`
+)
+export const BRIDGE_MAX_ROUTE_HREF_CHARS = 2048
+
+/**
+ * The schemes a page may ask the shell to open in the system browser, and the only three.
+ *
+ * `https:` and `http:` are what every provider's task source is, and `mailto:` is what a review
+ * thread produces. Everything else — `javascript:`, `data:`, `file:`, `intent:`, the shell's own
+ * `orca-mobile-web:` — is a way to reach something the page was never granted, so the list is
+ * closed. Broad inside it on purpose: any host and any path, because a grant that named GitHub
+ * would have to grow a row per provider.
+ */
+export const BRIDGE_EXTERNAL_LINK_SCHEMES: readonly string[] = ['https:', 'http:', 'mailto:']
+
+/** The same bound a route href gets: one cap for every URL that crosses, in either direction. */
+export const BRIDGE_MAX_EXTERNAL_LINK_CHARS = BRIDGE_MAX_ROUTE_HREF_CHARS
+
+/**
+ * The URL the shell will open, as the parser reads it, or null when it is not one the grant covers.
+ *
+ * Parsed rather than prefix-matched, because a scheme is what a URL parser says it is and
+ * `startsWith('https:')` reads one out of `javascript:alert("https://x")`. `URL` with no base
+ * accepts only an absolute URL, which is the rest of the rule: a relative target is a route, and
+ * routes go back over `navigate`.
+ *
+ * The parsed href is what callers forward, never the string they were handed. The WHATWG parser
+ * strips tab, LF and CR from anywhere and trims leading C0 and space before it reads the scheme, so
+ * `ht\ntps://example.com` and `https:example.com` pass this check and are not what a device handler
+ * should be given. Normalizing is the fix and comparing is not: `https://example.com` differs from
+ * its own href by a path slash, so refusing what differs would refuse an ordinary URL.
+ */
+export function readBridgeExternalLinkUrl(url: string): string | null {
+  // The raw string first, so a hostile one is refused without being parsed. The normalized form is
+  // bounded too, below: percent-encoding expands, so a string inside the cap can leave it.
+  if (url.length > BRIDGE_MAX_EXTERNAL_LINK_CHARS) {
+    return null
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return null
+  }
+  if (!BRIDGE_EXTERNAL_LINK_SCHEMES.includes(parsed.protocol)) {
+    return null
+  }
+  return parsed.href.length > BRIDGE_MAX_EXTERNAL_LINK_CHARS ? null : parsed.href
+}
+
+/** Whether the shell will open this URL at all. The envelope's refine; the value is read above. */
+export function isBridgeExternalLinkUrl(url: string): boolean {
+  return readBridgeExternalLinkUrl(url) !== null
+}
+export const BRIDGE_MAX_PAGE_ROUTES = 64
+/** A host id, its name and its endpoint. Bounded because the page renders all three. */
+export const BRIDGE_MAX_HOST_FIELD_CHARS = 1024
+
+/**
  * In-flight bounds. The RN host is authoritative for both; the page holds the same numbers only to
  * refuse at the call site instead of after a round trip.
  */
 export const BRIDGE_MAX_PENDING_REQUESTS = 64
 export const BRIDGE_MAX_SUBSCRIPTIONS = 32
+
+/**
+ * Viewport bounds, held to the desktop's `TerminalViewport` by the envelope's test.
+ *
+ * A viewport the page sends is written into the cached subscribe params of every stream naming that
+ * terminal, the native terminal screens' included, and the desktop refuses an out-of-range one when
+ * those streams resubscribe. Refusing it at the frame is what keeps a bad page's reach inside its
+ * own document.
+ */
+export const BRIDGE_MAX_VIEWPORT_COLS = 1000
+export const BRIDGE_MAX_VIEWPORT_ROWS = 500
 
 /**
  * A reply above this aborts its request rather than being chunked further. The frame cap is a

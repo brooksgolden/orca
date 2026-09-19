@@ -236,6 +236,7 @@ export class OrcaRuntimeWithSerializeTerminalBufferFromAvailableState extends Or
     lastTitle?: string
     source?: 'renderer'
     oscLinks?: TerminalOscLinkRange[]
+    pendingEscapeTailAnsi?: string
     kittyKeyboardFlags?: number
   } | null> {
     if (this.ptyController?.hasRendererSerializer?.(ptyId) === false) {
@@ -249,6 +250,7 @@ export class OrcaRuntimeWithSerializeTerminalBufferFromAvailableState extends Or
       cwd?: string | null
       lastTitle?: string
       oscLinks?: TerminalOscLinkRange[]
+      pendingEscapeTailAnsi?: string
       kittyKeyboardFlags?: number
     } | null = null
     try {
@@ -264,7 +266,10 @@ export class OrcaRuntimeWithSerializeTerminalBufferFromAvailableState extends Or
       ? this.preferTrackedLastTitle(ptyId, {
           ...rendererSnapshot,
           cwd: rendererSnapshot.cwd ?? this.terminalCwdByPtyId.get(ptyId),
-          source: 'renderer' as const
+          source: 'renderer' as const,
+          ...(rendererSnapshot.pendingEscapeTailAnsi
+            ? { pendingEscapeTailAnsi: rendererSnapshot.pendingEscapeTailAnsi }
+            : {})
         })
       : null
   }
