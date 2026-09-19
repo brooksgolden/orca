@@ -107,7 +107,7 @@ export function useSessionsGridItems(lenses: SessionGridLenses = {}): {
     [sessionInputs, gridView, agentStatusEpoch, revealHidden]
   )
 
-  // Why lazy: `useRef(create())` would build a Map and two arrays on every render and throw
+  // Why lazy: an eager initializer would build a Map and two arrays on every render and throw
   // them away — allocation churn in the hook that exists to remove it, on a 33 ms cadence.
   const reuseCacheRef = useRef<SessionGridItemReuseCache | null>(null)
   const reuseCache = (reuseCacheRef.current ??= createSessionGridItemReuseCache())
