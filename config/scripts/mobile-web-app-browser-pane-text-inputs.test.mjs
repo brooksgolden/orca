@@ -35,7 +35,6 @@ const PANE_CLOSURE = {
 }
 
 const KEY_ROW_STYLES = 'src/browser/mobile-browser-pane-styles.ts'
-const ADDRESS_STYLES_NATIVE = 'src/browser/browser-address-field-styles.ts'
 
 function offendingFiles() {
   return textInputFontSizeOffenders(mobileDir, PANE_CLOSURE).map((entry) =>
@@ -55,20 +54,13 @@ describe('the browser pane text inputs under the C4.2 census', () => {
   })
 
   /**
-   * The one the census cannot see, and why it is not a regression.
+   * The address field is split, and the split is what the census now reads.
    *
-   * `resolveLocal` in the seam module tries `.ts`, `.tsx`, `/index.ts` and `/index.tsx` and never
-   * `.web.ts`, so an import it follows lands on the native sibling even when the bundle resolved
-   * the web one. The address field is split that way on purpose: native keeps the 12px it has
-   * always rendered, and the browser gets the seam. The census reads the 12 and calls it an
-   * offender.
-   *
-   * Pinned rather than left to surprise whoever lists the pane's route. Two ways out then: teach
-   * `resolveLocal` the `.web` extensions the builder already prefers, which would make the census
-   * measure what the page runs for every split; or move the address field onto the seam natively
-   * and accept 14px in the toolbar.
+   * Native keeps the 12px the toolbar has always rendered, because no phone has a page to zoom;
+   * the browser gets the seam. `resolveLocal` follows the `.web.ts` the builder would have
+   * resolved, so the size judged here is the size the page runs rather than the one it does not.
    */
-  it('reports the address field, because it cannot follow a .web sibling', () => {
-    expect(offendingFiles()).toEqual([ADDRESS_STYLES_NATIVE])
+  it('takes the address field through the seam, through its .web sibling', () => {
+    expect(offendingFiles()).toEqual([])
   })
 })

@@ -28,13 +28,32 @@ function readOrNull(path) {
   }
 }
 
+/**
+ * The extensions a specifier is tried with, in the order the page bundle tries them.
+ *
+ * `.web` first, because that is what `resolveExtensions` in the builder does and therefore what a
+ * route closure is made of. A census that followed an import to the native sibling would be judging
+ * a module no browser loads, which fails in the direction that matters: a split whose web half sits
+ * under the floor reads as clean because its native half is on the seam.
+ */
+const RESOLVED_EXTENSIONS = [
+  '.web.tsx',
+  '.web.ts',
+  '.tsx',
+  '.ts',
+  '/index.web.tsx',
+  '/index.web.ts',
+  '/index.tsx',
+  '/index.ts'
+]
+
 /** A relative specifier as a path under `mobile/`, or null for a package. */
 function resolveLocal(mobileDir, fromFile, specifier) {
   if (!specifier.startsWith('.')) {
     return null
   }
   const base = resolve(dirname(join(mobileDir, fromFile)), specifier)
-  for (const extension of ['.ts', '.tsx', '/index.ts', '/index.tsx']) {
+  for (const extension of RESOLVED_EXTENSIONS) {
     if (existsSync(base + extension)) {
       // Relative to the root rather than sliced by its length, which leaves a leading separator
       // whenever the root is passed without a trailing one.
@@ -42,6 +61,17 @@ function resolveLocal(mobileDir, fromFile, specifier) {
     }
   }
   return null
+}
+
+/**
+ * A resolved path with its platform suffix dropped, so both siblings name one module.
+ *
+ * Needed because the seam is itself a split: `text-input-font-size.web.ts` is where the raise
+ * lives, so resolving an import of it now lands on the web file, and comparing that against the
+ * seam's native path would make every binding in the tree stop counting as the seam.
+ */
+function moduleIdentity(path) {
+  return path === null ? null : path.replace(/\.web(\.[jt]sx?)$/, '$1')
 }
 
 /**
@@ -190,7 +220,8 @@ function isSeamBinding(mobileDir, parsed, file, initializer) {
       if (
         element.name.text === initializer.text &&
         (element.propertyName ?? element.name).text === SEAM_EXPORT &&
-        resolveLocal(mobileDir, file, statement.moduleSpecifier.text) === SEAM_MODULE
+        moduleIdentity(resolveLocal(mobileDir, file, statement.moduleSpecifier.text)) ===
+          SEAM_MODULE
       ) {
         return true
       }
