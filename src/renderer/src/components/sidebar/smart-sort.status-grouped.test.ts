@@ -54,6 +54,23 @@ describe('status-grouped workspace sorting', () => {
     ])
   })
 
+  it('partitions lanes in status order so the persisted flat order keeps Done last', () => {
+    // Why this matters beyond the lanes: Smart mode persists this flat order as
+    // sortOrder, and cold start replays it under groupings that have no lanes.
+    const statuses = cloneDefaultWorkspaceStatuses()
+    const doneIndex = statuses.findIndex((status) => status.id === 'completed')
+    const progressIndex = statuses.findIndex((status) => status.id === 'in-progress')
+    expect(progressIndex).toBeLessThan(doneIndex)
+
+    const done = worktree('done', NOW - 1_000, 'completed')
+    const active = worktree('active', NOW - 500_000, 'in-progress')
+    const attention = new Map<string, WorktreeAttention>()
+    expect([done, active].sort(groupedComparator(attention)).map((w) => w.id)).toEqual([
+      'active',
+      'done'
+    ])
+  })
+
   it('counts recent agent completion even if saved activity time is stale', () => {
     const agent = worktree('agent', NOW - 100_000)
     const terminal = worktree('terminal', NOW - 10_000)

@@ -5,7 +5,8 @@ import { track } from '@/lib/telemetry'
 import { tabHasLivePty } from '@/lib/tab-has-live-pty'
 import { persistWorktreeSortOrderByHost } from '@/lib/worktree-sort-order-persistence'
 import type { Repo } from '../../../../../../shared/repo-types'
-import type { Worktree } from '../../../../../../shared/worktree/types'
+import type { WorkspaceStatusDefinition, Worktree } from '../../../../../../shared/worktree/types'
+import type { WorktreeGroupBy } from '../grouping/row-types'
 import {
   buildWorktreeComparator,
   buildStatusGroupedSmartComparator,
@@ -86,8 +87,17 @@ export function useSidebarWorktreeSortOrder(args: {
   allWorktrees: readonly Worktree[]
   repoMap: Map<string, Repo>
   sortBy: SortBy
+  groupBy: WorktreeGroupBy
+  workspaceStatuses: readonly WorkspaceStatusDefinition[]
 }): string[] {
-  const { allWorktrees, repoMap, sortBy } = args
+  const { allWorktrees, repoMap, sortBy, groupBy, workspaceStatuses } = args
+  // Why a key and not the array: workspaceStatuses is rebuilt on every UI
+  // hydrate, so depending on its identity would re-sort for no visible change.
+  // Only the ids and their lane order can change what the comparator does.
+  const workspaceStatusOrderKey = useMemo(
+    () => workspaceStatuses.map((status) => status.id).join('|'),
+    [workspaceStatuses]
+  )
   // Non-archived count — detects structural changes (add/remove) so the debounce below can apply immediately.
   const worktreeCount = useMemo(() => {
     let count = 0
@@ -152,11 +162,11 @@ export function useSidebarWorktreeSortOrder(args: {
         : new Map<string, WorktreeAttention>()
     const comparator = buildWorktreeComparator(sortBy, repoMap, now, attentionByWorktree, labels)
     nonArchivedWorktrees.sort(
-      sortBy === 'smart' && state.groupBy === 'workspace-status'
+      sortBy === 'smart' && groupBy === 'workspace-status'
         ? buildStatusGroupedSmartComparator(
             comparator,
             now,
-            state.workspaceStatuses,
+            workspaceStatuses,
             attentionByWorktree,
             labels
           )
@@ -168,8 +178,12 @@ export function useSidebarWorktreeSortOrder(args: {
       detectedLiveSmartSignal
     }
     // debouncedSortEpoch is an intentional trigger not read in the memo; its change (debounced) signals a recompute.
+    // Why groupBy and the status key are deps: turning Group by Status on or off
+    // changes which comparator runs, and nothing else bumps sortEpoch for it, so
+    // without them the lanes would keep the previous mode's order until an
+    // unrelated agent event happened to land.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSortEpoch, repoMap, sortBy])
+  }, [debouncedSortEpoch, repoMap, sortBy, groupBy, workspaceStatusOrderKey])
   // Why: stable ID order prevents rank-only refreshes from echoing an unchanged snapshot.
   const sortedIds = useReusedArrayIdentity(recomputedSort.sortedIds)
 

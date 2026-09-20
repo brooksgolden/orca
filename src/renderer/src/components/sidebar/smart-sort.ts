@@ -1,6 +1,10 @@
 import type { Repo } from '../../../../shared/repo-types'
 import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Worktree, WorkspaceStatusDefinition } from '../../../../shared/worktree/types'
+import type {
+  Worktree,
+  WorkspaceStatus,
+  WorkspaceStatusDefinition
+} from '../../../../shared/worktree/types'
 import { getWorkspaceStatus } from '../../../../shared/workspace-statuses'
 import type {
   AgentStatusEntry,
@@ -179,11 +183,17 @@ export function buildStatusGroupedSmartComparator(
   attentionByWorktree: ReadonlyMap<string, WorktreeAttention>,
   labels?: WorktreeSortLabels
 ): (a: Worktree, b: Worktree) => number {
+  // Why lane rank and not the raw id: this flat order is also what Smart mode
+  // persists as sortOrder, so an alphabetical partition would restore Done
+  // above In progress on the next cold start under a grouping with no lanes.
+  const laneRankByStatus = new Map(statuses.map((status, index) => [status.id, index]))
+  const laneRank = (status: WorkspaceStatus): number =>
+    laneRankByStatus.get(status) ?? statuses.length
   return (a, b) => {
     const aStatus = getWorkspaceStatus(a, statuses)
     const bStatus = getWorkspaceStatus(b, statuses)
     if (aStatus !== bStatus) {
-      return aStatus.localeCompare(bStatus)
+      return laneRank(aStatus) - laneRank(bStatus)
     }
     if (aStatus === 'completed') {
       const aRecent = effectiveAgentActivity(a, now, attentionByWorktree)

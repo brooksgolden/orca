@@ -28,6 +28,7 @@ import { EMPTY_PROJECT_GROUPS, type VirtualizedWorktreeViewportProps } from './v
 import { useWorktreeDropCommitContext } from '../drag/use-drop-commit-context'
 import { buildWorktreeVirtualRowContext } from './virtual-row-context'
 import { renderWorktreeVirtualRow } from '../rows/virtual-row-dispatch'
+import { claimSidebarListFocus } from '@/lib/sidebar-list-focus-claim'
 
 const WORKTREE_SIDEBAR_SCROLL_STYLE: React.CSSProperties = {
   // Why: TanStack Virtual owns scroll correction; native overflow anchoring fights it and causes jumps.
@@ -354,6 +355,11 @@ export const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktr
             return
           }
           scrollRef.current?.focus({ preventScroll: true })
+          // Why the claim: a workspace opened for the first time this session
+          // mounts its terminal pane after this click, and a freshly created
+          // pane focuses itself. Without the claim that late focus wins the
+          // race and the list-scoped shortcuts go dead on cold workspaces only.
+          claimSidebarListFocus()
         }}
         // Why: trackpad momentum fires sparse scroll events after the input stream quiets; suppress correction until the viewport stops.
         onScroll={handleScroll}

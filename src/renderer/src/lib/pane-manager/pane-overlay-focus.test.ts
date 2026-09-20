@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { claimSidebarListFocus, releaseSidebarListFocus } from '../sidebar-list-focus-claim'
 import { PaneManager } from './pane-manager'
 import { createInitialManagedPane } from './pane-manager-pane-creation'
 import type { PaneManagerHost } from './pane-manager-host'
@@ -13,6 +14,7 @@ vi.mock('./pane-lifecycle', () => ({
 }))
 
 afterEach(() => {
+  releaseSidebarListFocus()
   document.body.innerHTML = ''
 })
 
@@ -101,6 +103,28 @@ describe.each(['initial', 'active'] as const)('%s pane focus', (operation) => {
   it('allows focus with only persistent sidebar chrome', () => {
     const f = fixture()
     overlay('listbox').setAttribute('data-worktree-sidebar', '')
+    focus(f)
+    expect(document.activeElement).toBe(f.textarea)
+  })
+
+  it('preserves a workspace-list focus the user just claimed by clicking a card', () => {
+    const f = fixture()
+    const sidebar = overlay('listbox')
+    sidebar.setAttribute('data-worktree-sidebar', '')
+    sidebar.focus()
+    claimSidebarListFocus()
+    focus(f)
+    expect(document.activeElement).toBe(sidebar)
+    expect(f.pane.terminal.focus).not.toHaveBeenCalled()
+  })
+
+  it('still focuses the pane when the claimed list has since lost focus', () => {
+    const f = fixture()
+    const sidebar = overlay('listbox')
+    sidebar.setAttribute('data-worktree-sidebar', '')
+    sidebar.focus()
+    claimSidebarListFocus()
+    document.body.focus()
     focus(f)
     expect(document.activeElement).toBe(f.textarea)
   })

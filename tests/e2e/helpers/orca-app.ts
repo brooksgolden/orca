@@ -88,13 +88,19 @@ const ORCA_E2E_SLOWMO_MS = ((): number => {
 })()
 
 async function removeUserDataDirAfterShutdown(userDataDir: string): Promise<void> {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
       rmSync(userDataDir, { recursive: true, force: true })
       return
     } catch (error) {
-      if (attempt === 4) {
-        throw error
+      if (attempt === 7) {
+        // Why a warning and not a throw: the app has already shut down and the
+        // daemons are already reaped, so a profile directory Windows is still
+        // holding is stale temp state, not a test result. Throwing turned
+        // already-passing specs red on machines where a scanner or a file sync
+        // client keeps the handle open past the retry window.
+        console.warn(`[orca-e2e] Could not remove ${userDataDir} after shutdown: ${String(error)}`)
+        return
       }
       // Why: Windows can briefly keep Electron profile files locked after the
       // process exits; retrying avoids turning a passed flow into teardown noise.
