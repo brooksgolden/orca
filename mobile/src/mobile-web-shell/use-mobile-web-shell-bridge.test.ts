@@ -45,6 +45,8 @@ type Probe = {
   externalLinks: string[]
   backPops: number
   storageWrites: { key: string; value: string | null }[]
+  /** The running total after each dropped screencast frame, as the screen receives it. */
+  droppedBinaryFrames: number[]
 }
 
 /** What the page cannot read for itself, as the screen hands it over. */
@@ -138,6 +140,7 @@ function Harness(props: {
     // absorb: rebuilding the host here would settle every pending request on each render.
     onPageFault: (error) => props.faults.push(error),
     onRouteRefused: () => {},
+    onBinaryFramesDropped: (total) => props.probe.droppedBinaryFrames.push(total),
     onPageReady: () => {
       props.readies.push(
         props.session.kind === 'ready' ? props.session.sessionId : props.session.kind
@@ -187,6 +190,7 @@ async function mount(session: MobileWebShellSessionState): Promise<Mounted> {
     navigations: [],
     externalLinks: [],
     backPops: 0,
+    droppedBinaryFrames: [],
     storageWrites: []
   }
   const faults: BridgeErrorCapture[] = []
@@ -391,6 +395,36 @@ describe('teardown', () => {
     expect(fakeClient().requests).toEqual([])
   })
 
+  /** The one thing a dropped frame leaves behind on a device, so the hook carrying it to the
+   *  screen is the whole of that evidence path. */
+  it('carries the dropped-frame total from the host to the screen', async () => {
+    const mounted = await mount(readyState('session-one'))
+    await mounted.deliver(clientFrame({ type: 'ready' }))
+    await mounted.deliver(
+      clientFrame({
+        type: 'subscribe',
+        id: ID,
+        method: 'browser.screencast',
+        params: {},
+        wantsBinary: true
+      })
+    )
+    const oversized = {
+      opcode: 1 as const,
+      seq: 1,
+      format: 'jpeg' as const,
+      metadata: {},
+      image: new Uint8Array(500_000)
+    }
+    await act(async () => {
+      fakeClient().streams[0]?.emitBinary?.(oversized)
+      fakeClient().streams[0]?.emitBinary?.({ ...oversized, seq: 2 })
+    })
+    expect(mounted.probe.droppedBinaryFrames).toEqual([1, 2])
+    // Dropped, not ended: the stream is still the shell's to serve.
+    expect(fakeClient().streams[0]?.unsubscribes).toBe(0)
+  })
+
   it('disposes on unmount and settles what was in flight as delivery-unknown', async () => {
     const mounted = await mount(readyState('session-one'))
     await mounted.deliver(clientFrame({ type: 'ready' }))
@@ -464,6 +498,7 @@ describe('the callbacks a render passes', () => {
       navigations: [],
       externalLinks: [],
       backPops: 0,
+      droppedBinaryFrames: [],
       storageWrites: []
     }
     // One session throughout, so the host is never rebuilt: only the ref refresh can carry the
@@ -524,6 +559,7 @@ describe('client changes', () => {
       navigations: [],
       externalLinks: [],
       backPops: 0,
+      droppedBinaryFrames: [],
       storageWrites: []
     }
     const render = (deliver: readonly string[]): ReactElement =>
