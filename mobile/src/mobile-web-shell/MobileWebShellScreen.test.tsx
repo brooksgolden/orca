@@ -21,10 +21,16 @@ type ScreenDependencies = {
   pageRoutes: readonly string[]
   routeGrants: readonly string[]
   lifecycle: string[]
+  /** Every render of the shell view, which is one per render of the screen above it. */
+  viewRenders: number
   state: MobileWebShellSessionState
   /** Null for every case but the bridge's: with no client the hook builds no host at all. */
   client: FakeRpcClient | null
 }
+
+const SNAPSHOT = vi.hoisted(() => ({
+  host: { id: 'host-1', name: 'Host One', endpoint: 'ws://host-1', lastConnected: 3 }
+}))
 
 const dependencies = vi.hoisted((): ScreenDependencies => {
   // Before the module under test is imported, so its `__DEV__` guard is on and the developer facts
@@ -45,6 +51,7 @@ const dependencies = vi.hoisted((): ScreenDependencies => {
     pageRoutes: ['/h/[hostId]'],
     routeGrants: ['navigate', 'storage', 'externalLink', 'native.clipboard.write'],
     lifecycle: [],
+    viewRenders: 0,
     state: { kind: 'checking' },
     client: null
   }
@@ -85,6 +92,7 @@ vi.mock('../../modules/orca-mobile-web-shell/src', async () => {
   const loadState = await import('../../modules/orca-mobile-web-shell/src/load-state')
   return {
     OrcaMobileWebShellView: (props: { sessionId: string }) => {
+      dependencies.viewRenders += 1
       React.useEffect(() => {
         dependencies.lifecycle.push(`mount:${props.sessionId}`)
         return () => {
@@ -105,9 +113,10 @@ vi.mock('../transport/client-context', () => ({
 // global this test does not have. What it answers is the screen's input, not its behaviour.
 vi.mock('./use-page-host-snapshot', () => ({
   usePageHostSnapshot: () => ({
-    snapshot: {
-      host: { id: 'host-1', name: 'Host One', endpoint: 'ws://host-1', lastConnected: 3 }
-    },
+    // One object for the life of the file, as the real hook's `useState` gives. A fresh literal per
+    // render changes the identity the host effect is keyed on, so the bridge host was being torn
+    // down and rebuilt on every render of this screen — and every pending request settled with it.
+    snapshot: SNAPSHOT,
     unreadable: dependencies.snapshotUnreadable,
     readStorage: () => ({}),
     refreshStorage: () => {
@@ -503,5 +512,85 @@ describe('the route the shell was not asked to render', () => {
     expect(tree.root.findAllByType(NativeFallback)).toHaveLength(1)
     expect(byName(tree, 'ShellViewProbe')).toEqual([])
     expect(byName(tree, 'ActivityIndicator')).toEqual([])
+  })
+})
+
+describe('the dropped-frame count on the dev facts line', () => {
+  /** 500,000 bytes encodes past the frame cap, so every one of these is dropped. */
+  const oversized = {
+    opcode: 1 as const,
+    seq: 1,
+    format: 'jpeg' as const,
+    metadata: {},
+    image: new Uint8Array(500_000)
+  }
+
+  async function openBinaryStream(tree: ReactTestRenderer): Promise<void> {
+    await act(async () => {
+      byName(tree, 'ShellViewProbe')[0]?.props.onBridgeMessage({
+        nativeEvent: { json: clientFrame({ type: 'ready' }) }
+      })
+    })
+    await act(async () => {
+      byName(tree, 'ShellViewProbe')[0]?.props.onBridgeMessage({
+        nativeEvent: {
+          json: clientFrame({
+            type: 'subscribe',
+            id: 'a'.repeat(22),
+            method: 'browser.screencast',
+            params: {},
+            wantsBinary: true
+          })
+        }
+      })
+    })
+  }
+
+  async function drop(times: number): Promise<void> {
+    for (let index = 0; index < times; index += 1) {
+      await act(async () => {
+        dependencies.client?.streams[0]?.emitBinary?.({ ...oversized, seq: index + 1 })
+      })
+    }
+  }
+
+  function devFactsText(tree: ReactTestRenderer): string | null {
+    const line = byName(tree, 'Text').find(
+      (node) => node.props.testID === 'mobile-web-shell-dev-facts'
+    )
+    return line === undefined ? null : String(line.props.children)
+  }
+
+  it('shows the running total and resets it when the host is rebuilt', async () => {
+    dependencies.client = createFakeRpcClient()
+    dependencies.routeGrants = ['navigate', 'screencastBinary']
+    const tree = await render(readyState('session-one'))
+    await openBinaryStream(tree)
+    await drop(2)
+    expect(devFactsText(tree)).toContain('2 frames dropped')
+    await update(tree, readyState('session-two'))
+    expect(devFactsText(tree)).not.toContain('dropped')
+  })
+
+  /**
+   * The line renders null outside a development build, so state behind it is a re-render of the
+   * whole screen for a fact nobody can see — at up to ten a second on a page the desktop cannot
+   * compress. Counted rather than reasoned about.
+   */
+  it('renders the screen not once more per dropped frame in a production build', async () => {
+    Object.assign(globalThis, { __DEV__: false })
+    try {
+      dependencies.client = createFakeRpcClient()
+      dependencies.routeGrants = ['navigate', 'screencastBinary']
+      const tree = await render(readyState('session-one'))
+      await openBinaryStream(tree)
+      expect(devFactsText(tree)).toBeNull()
+      const before = dependencies.viewRenders
+      await drop(5)
+      expect({ extraRenders: dependencies.viewRenders - before }).toEqual({ extraRenders: 0 })
+      expect(devFactsText(tree)).toBeNull()
+    } finally {
+      Object.assign(globalThis, { __DEV__: true })
+    }
   })
 })

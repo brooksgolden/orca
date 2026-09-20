@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -13,17 +13,17 @@ import type {
   MobileWebShellFailureCause,
   MobileWebShellSessionState
 } from './mobile-web-shell-session-contract'
-import { formatMobileWebShellDevFacts } from './mobile-web-shell-dev-facts'
+import {
+  formatMobileWebShellDevFacts,
+  isDevelopmentBuild,
+  useMobileWebShellDroppedFrames
+} from './mobile-web-shell-dev-facts'
 import { useMobileWebShellBridge } from './use-mobile-web-shell-bridge'
 import type { MobileWebShellRuntime } from './mobile-web-shell-runtime'
 import { serveNativeClipboardVerb } from '../platform/native-clipboard'
 import { useShellStackPop } from './use-shell-stack-pop'
 import { useMobileWebShellSession } from './use-mobile-web-shell-session'
 import { usePageHostSnapshot } from './use-page-host-snapshot'
-
-// Same guard as the Troubleshoot developer row: `__DEV__` is undefined outside the React Native
-// runtime, and the facts below are for whoever is bringing the shell up, not for a user.
-const isDevelopmentBuild = typeof __DEV__ !== 'undefined' && __DEV__
 
 function failureMessage(reason: MobileWebShellFailureCause): string {
   switch (reason) {
@@ -101,7 +101,7 @@ function DevFacts({
   state: Extract<MobileWebShellSessionState, { kind: 'ready' }>
   droppedBinaryFrames: number
 }) {
-  if (!isDevelopmentBuild) {
+  if (!isDevelopmentBuild()) {
     return null
   }
   return (
@@ -147,7 +147,7 @@ export function MobileWebShellScreen({
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const popShellStack = useShellStackPop()
-  const [droppedBinaryFrames, setDroppedBinaryFrames] = useState(0)
+  const { droppedBinaryFrames, reportDroppedBinaryFrames } = useMobileWebShellDroppedFrames()
   const {
     state,
     pageRoutes,
@@ -215,7 +215,7 @@ export function MobileWebShellScreen({
     onNavigateBack: popShellStack,
     // A dropped screencast frame leaves no other trace on a device: the stream stays up by design
     // and the diagnostic beside it prints once per host.
-    onBinaryFramesDropped: setDroppedBinaryFrames
+    onBinaryFramesDropped: reportDroppedBinaryFrames
   })
 
   // A profile read that rejected never becomes a host, so the session would otherwise sit in
