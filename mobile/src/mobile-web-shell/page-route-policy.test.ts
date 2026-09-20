@@ -79,9 +79,32 @@ describe('the grants this app implements', () => {
       'navigate',
       'storage',
       'externalLink',
+      'screencastBinary',
       'native.clipboard.write',
       'native.clipboard.read'
     ])
+  })
+
+  /** The route C7 will declare, served by a shell that has the lane. The name's shape is the host
+   *  contract's rule and is pinned there, beside the pattern that decides it. */
+  it('serves a route that needs the screencast lane', () => {
+    expect(
+      implementedPageRoutes([
+        { pathname: '/h/[hostId]/session/[worktreeId]', grants: ['navigate', 'screencastBinary'] }
+      ])
+    ).toEqual(['/h/[hostId]/session/[worktreeId]'])
+  })
+
+  /**
+   * The negotiation ruling 5 rests on, from the other side: a shell that does not implement the
+   * lane leaves the route native rather than letting a page subscribe for frames that cannot come.
+   */
+  it('leaves a route needing the lane native on a shell without it', () => {
+    const olderShellGrants = MOBILE_WEB_SHELL_GRANTS.filter((grant) => grant !== 'screencastBinary')
+    const needsLane = { pathname: '/h/[hostId]/session/[worktreeId]', grants: ['screencastBinary'] }
+    expect(needsLane.grants.every((grant) => olderShellGrants.some((own) => own === grant))).toBe(
+      false
+    )
   })
 })
 

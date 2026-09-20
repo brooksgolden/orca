@@ -16,6 +16,14 @@ export const MOBILE_WEB_SHELL_GRANTS = [
   'navigate',
   'storage',
   'externalLink',
+  // The screencast's binary frames, which the shell encodes into `event.binary` for a page that
+  // subscribed with `wantsBinary`. Its own grant rather than a property of the stream, because it
+  // is the only thing that tells a page a shell can carry those frames at all: an app built before
+  // C6.1 parses a manifest naming it, finds nothing behind it, and leaves the route native instead
+  // of mounting a pane that would subscribe and wait for frames that cannot come. Not a `native.`
+  // verb — nothing is requested and answered — and the host contract's grant pattern reads one
+  // segment under that namespace as malformed anyway.
+  'screencastBinary',
   // Spread rather than restated: the verb table is keyed on this same tuple, so a verb cannot be
   // advertised without a row and a row cannot exist without being advertised.
   ...BRIDGE_NATIVE_VERB_NAMES
