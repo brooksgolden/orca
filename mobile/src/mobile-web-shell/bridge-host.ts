@@ -8,6 +8,7 @@ import { isBridgeNativeMethod } from './bridge/bridge-native-verbs'
 import { createNativeVerbServer } from './bridge-host-native-verbs'
 import { BridgeHostRequests } from './bridge-host-requests'
 import { BridgeHostSubscriptions } from './bridge-host-subscriptions'
+import { bridgeServesBinaryFrames } from './bridge/bridge-screencast-grant'
 import { BRIDGE_MAX_SUBSCRIPTIONS, readBridgeExternalLinkUrl } from './bridge/bridge-caps'
 import {
   BRIDGE_EXTERNAL_LINK_GRANT,
@@ -184,6 +185,9 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
     })
   })
 
+  const servesBinaryFrames = (message: SubscribeMessage): boolean =>
+    bridgeServesBinaryFrames({ wantsBinary: message.wantsBinary, granted })
+
   function handleSubscribe(message: SubscribeMessage): void {
     const { id } = message
     // Collision first: both refusals settle the same exchange, and an id already in flight is the
@@ -210,7 +214,7 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
       return
     }
     try {
-      subscriptions.start(id, message.method, message.params, message.wantsBinary)
+      subscriptions.start(id, message.method, message.params, servesBinaryFrames(message))
     } catch (error) {
       sendError(id, error)
     }

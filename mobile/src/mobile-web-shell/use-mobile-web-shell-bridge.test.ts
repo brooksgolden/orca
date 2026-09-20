@@ -3,6 +3,7 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer'
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import type { OrcaMobileWebShellViewHandle } from '../../modules/orca-mobile-web-shell/src'
 import { BRIDGE_NATIVE_VERB_NAMES } from './bridge/bridge-native-verbs'
+import { BRIDGE_SCREENCAST_BINARY_GRANT } from './bridge/bridge-screencast-grant'
 import {
   BRIDGE_FAULT_GRANT,
   BRIDGE_NAVIGATE_BACK_NOTIFY,
@@ -125,7 +126,13 @@ function Harness(props: {
     // Built inline on every render, as a caller writes it: the host is not rebuilt for it.
     route: { pathname: '/h/host-1' },
     pageRoutes: ['/h/[hostId]'],
-    routeGrants: ['navigate', 'storage', 'externalLink', ...BRIDGE_NATIVE_VERB_NAMES],
+    routeGrants: [
+      'navigate',
+      'storage',
+      'externalLink',
+      BRIDGE_SCREENCAST_BINARY_GRANT,
+      ...BRIDGE_NATIVE_VERB_NAMES
+    ],
     onNavigate: (href) => props.probe.navigations.push(href),
     onExternalLink: (url) => props.probe.externalLinks.push(url),
     serveNativeVerb: () => Promise.resolve({ value: 'pasteboard' }),

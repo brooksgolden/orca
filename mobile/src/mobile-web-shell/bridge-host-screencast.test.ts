@@ -192,3 +192,46 @@ describe('an over-cap frame drops on the binary lane and ends the stream on the 
     ])
   })
 })
+
+/**
+ * The lane is a grant, so the host serves it to a session whose route was given it and to no other.
+ *
+ * The refusal is the one every grant gets at the call site: nothing is answered, nothing is logged
+ * back to the page, and the subscription itself proceeds — a page that asked for binary without the
+ * grant gets the JSON stream it would have got before C6.1 existed. Ruling 5 means a page that
+ * respects its own `init.grants.native` never reaches this state; this is what holds one that does
+ * not.
+ */
+describe('the binary lane is served only to a route granted it', () => {
+  it('hands the client a binary listener when the route was granted the lane', () => {
+    const bridge = harness({ ready: true, routeGrants: ['navigate', 'screencastBinary'] })
+    bridge.host.receive(screencastSubscribe(ID, true))
+    expect(bridge.client.streams[0]?.emitBinary).toBeInstanceOf(Function)
+  })
+
+  /**
+   * The same list a shell too old to implement the lane produces: `grantsForRoute` filters a route's
+   * declared grants through the implemented set, so granted-but-unimplemented and never-granted
+   * reach this host as the same absence. `page-route-policy.test.ts` pins that filter.
+   */
+  it('hands it none when the route was not, and still opens the stream', () => {
+    const bridge = harness({ ready: true, routeGrants: ['navigate', 'storage'] })
+    bridge.host.receive(screencastSubscribe(ID, true))
+    expect(bridge.client.streams[0]?.emitBinary).toBeNull()
+    // Not a refusal: the stream is open and its JSON events cross as they always have.
+    bridge.client.streams[0]?.emit({ type: 'ready' })
+    expect(bridge.frames().filter((message) => message.type === 'event')).toHaveLength(1)
+    expect(bridge.frames().filter((message) => message.type === 'error')).toEqual([])
+  })
+
+  it('offers the lane in init exactly when it will serve it', () => {
+    const granted = harness({ ready: true, routeGrants: ['navigate', 'screencastBinary'] })
+    const ungranted = harness({ ready: true, routeGrants: ['navigate', 'storage'] })
+    const nativeOf = (bridge: ReturnType<typeof harness>): readonly string[] => {
+      const init = bridge.frames().find((message) => message.type === 'init')
+      return init?.type === 'init' ? init.grants.native : []
+    }
+    expect(nativeOf(granted)).toContain('screencastBinary')
+    expect(nativeOf(ungranted)).not.toContain('screencastBinary')
+  })
+})

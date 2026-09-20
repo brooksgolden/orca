@@ -99,12 +99,31 @@ describe('the grants this app implements', () => {
    * The negotiation ruling 5 rests on, from the other side: a shell that does not implement the
    * lane leaves the route native rather than letting a page subscribe for frames that cannot come.
    */
-  it('leaves a route needing the lane native on a shell without it', () => {
-    const olderShellGrants = MOBILE_WEB_SHELL_GRANTS.filter((grant) => grant !== 'screencastBinary')
-    const needsLane = { pathname: '/h/[hostId]/session/[worktreeId]', grants: ['screencastBinary'] }
-    expect(needsLane.grants.every((grant) => olderShellGrants.some((own) => own === grant))).toBe(
-      false
-    )
+  /**
+   * The half the host cannot see, and the reason it does not have to.
+   *
+   * A session's list is a route's declared grants narrowed to what this shell implements, so a
+   * grant the shell lacks never reaches the host at all: granted-but-unimplemented and
+   * never-granted arrive there as the same absence, and the host's own rule reads one case.
+   * `bridge-host-screencast.test.ts` pins what it does with it.
+   */
+  it('drops a grant the route declared and this shell does not implement', () => {
+    const routes = [
+      { pathname: '/h/[hostId]/session/[worktreeId]', grants: ['navigate', 'aGrantFromTheFuture'] }
+    ]
+    expect(grantsForRoute(routes, '/h/host-1/session/wt-1')).toEqual(['navigate'])
+    expect(implementedPageRoutes(routes)).toEqual([])
+  })
+
+  it('resolves the screencast lane for a route that declares it', () => {
+    expect(
+      grantsForRoute(
+        [
+          { pathname: '/h/[hostId]/session/[worktreeId]', grants: ['navigate', 'screencastBinary'] }
+        ],
+        '/h/host-1/session/wt-1'
+      )
+    ).toEqual(['navigate', 'screencastBinary'])
   })
 })
 
