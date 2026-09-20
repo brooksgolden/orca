@@ -54,15 +54,22 @@ export function useMobileBrowserFrameApply(args: BrowserFrameApplyArgs) {
   // and this is a no-op there.
   const armFrameLayerFlip = useCallback((layer: FrameLayer, uri: string): void => {
     const layerRefs = { browserLayerRefs, pendingFrameLayerRef, visibleFrameLayerRef }
+    // Both arms answer for the frame they were armed with, not for the layer. A newer frame may
+    // have been pointed at the same layer while this one decoded: flipping then would show a frame
+    // the browser has not painted, and freeing the slot then would leave the newest frame's own
+    // decode with nothing to flip and the pane stuck on an older frame.
+    const isCurrentFrame = (): boolean => frameUriRef.current === uri
     whenBrowserFrameDisplayable(uri, {
       onDisplayable: () => {
-        // A newer frame may have been pointed at the same layer while this one decoded; flipping
-        // on a stale decode would show it before it has painted.
-        if (frameUriRef.current === uri) {
+        if (isCurrentFrame()) {
           settleBrowserFrameLayer(layerRefs, layer)
         }
       },
-      onUndecodable: () => abandonBrowserFrameLayer(layerRefs, layer)
+      onUndecodable: () => {
+        if (isCurrentFrame()) {
+          abandonBrowserFrameLayer(layerRefs, layer)
+        }
+      }
     })
   }, [])
 
