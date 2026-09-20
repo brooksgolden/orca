@@ -37,7 +37,9 @@ function addressInput(os: string): Record<string, unknown> {
     throw new Error('nothing mounted')
   }
   const mounted: ReactTestRenderer = renderer
-  return mounted.root.findByType('TextInput').props
+  // By prop rather than `findByType('TextInput')`: a host-component string is not an `ElementType`
+  // and does not typecheck, and a test outside `tsc` is a pin that proves nothing.
+  return mounted.root.findByProps({ placeholder: 'URL' }).props
 }
 
 afterEach(() => {
