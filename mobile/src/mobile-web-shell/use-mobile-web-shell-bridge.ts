@@ -198,6 +198,10 @@ export function useMobileWebShellBridge(args: {
       onDiagnostic: createBridgeDiagnosticReporter()
     })
     hostRef.current = { sessionId, host }
+    // The count belongs to this host, so a rebuild starts it over. Without this the screen keeps
+    // the retired host's number and the next drop reports the new host's first, so the line falls —
+    // which reads as frames coming back rather than as a fresh count.
+    binaryFramesDroppedRef.current(0)
     return () => {
       hostRef.current = null
       host.dispose()

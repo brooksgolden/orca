@@ -25,8 +25,6 @@ import { usePageHostSnapshot } from './use-page-host-snapshot'
 // runtime, and the facts below are for whoever is bringing the shell up, not for a user.
 const isDevelopmentBuild = typeof __DEV__ !== 'undefined' && __DEV__
 
-/** Enough of a build id to tell two generations apart in a screenshot, and not enough to be one. */
-
 function failureMessage(reason: MobileWebShellFailureCause): string {
   switch (reason) {
     case 'isolation-unavailable':

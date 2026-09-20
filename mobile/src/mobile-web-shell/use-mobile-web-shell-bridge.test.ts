@@ -427,9 +427,44 @@ describe('teardown', () => {
       fakeClient().streams[0]?.emitBinary?.(oversized)
       fakeClient().streams[0]?.emitBinary?.({ ...oversized, seq: 2 })
     })
-    expect(mounted.probe.droppedBinaryFrames).toEqual([1, 2])
+    // The leading 0 is the host announcing a fresh count as it is built; then one per drop.
+    expect(mounted.probe.droppedBinaryFrames).toEqual([0, 1, 2])
     // Dropped, not ended: the stream is still the shell's to serve.
     expect(fakeClient().streams[0]?.unsubscribes).toBe(0)
+  })
+
+  /**
+   * The count belongs to the host, so it has to go when the host does.
+   *
+   * Without this the screen keeps the retired host's number and the next drop reports the new
+   * host's first, so the line reads lower than it did a moment ago — which is worse than starting
+   * over, because a number that falls looks like frames coming back.
+   */
+  it('resets the dropped-frame total when the host is rebuilt', async () => {
+    const mounted = await mount(readyState('session-one'))
+    await mounted.deliver(clientFrame({ type: 'ready' }))
+    await mounted.deliver(
+      clientFrame({
+        type: 'subscribe',
+        id: ID,
+        method: 'browser.screencast',
+        params: {},
+        wantsBinary: true
+      })
+    )
+    await act(async () => {
+      fakeClient().streams[0]?.emitBinary?.({
+        opcode: 1 as const,
+        seq: 1,
+        format: 'jpeg' as const,
+        metadata: {},
+        image: new Uint8Array(500_000)
+      })
+    })
+    expect(mounted.probe.droppedBinaryFrames).toEqual([0, 1])
+    await mounted.update(readyState('session-two'))
+    // Zero again on the rebuild, before the new host has dropped anything of its own.
+    expect(mounted.probe.droppedBinaryFrames).toEqual([0, 1, 0])
   })
 
   it('disposes on unmount and settles what was in flight as delivery-unknown', async () => {

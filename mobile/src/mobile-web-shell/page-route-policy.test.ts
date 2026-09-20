@@ -96,10 +96,6 @@ describe('the grants this app implements', () => {
   })
 
   /**
-   * The negotiation ruling 5 rests on, from the other side: a shell that does not implement the
-   * lane leaves the route native rather than letting a page subscribe for frames that cannot come.
-   */
-  /**
    * The half the host cannot see, and the reason it does not have to.
    *
    * A session's list is a route's declared grants narrowed to what this shell implements, so a
