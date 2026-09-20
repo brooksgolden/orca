@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { act, create, type ReactTestRenderer } from 'react-test-renderer'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { TextInput } from 'react-native'
 import { MobileBrowserAddressField } from './MobileBrowserAddressField'
 
 // Hoisted with the mock factory, which runs before every module-level const in this file.
@@ -37,9 +38,10 @@ function addressInput(os: string): Record<string, unknown> {
     throw new Error('nothing mounted')
   }
   const mounted: ReactTestRenderer = renderer
-  // By prop rather than `findByType('TextInput')`: a host-component string is not an `ElementType`
-  // and does not typecheck, and a test outside `tsc` is a pin that proves nothing.
-  return mounted.root.findByProps({ placeholder: 'URL' }).props
+  // The imported component, not the string the mock stands it up as: a host-component string is
+  // not an `ElementType`, so `findByType('TextInput')` drops the file out of `tsc` and out of the
+  // tests-typecheck ratchet, and a pin that does not typecheck proves nothing.
+  return mounted.root.findByType(TextInput).props
 }
 
 afterEach(() => {
