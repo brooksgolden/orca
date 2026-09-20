@@ -6,6 +6,9 @@ import { usePageBridgeClient } from '../transport/client-context.web'
  * One camelCase token rather than a dotted path: `GRANT_NAME_PATTERN` in the manifest contract
  * admits a bare name or a `native.`-prefixed verb and nothing else, so a route declaring a dotted
  * non-verb name would be refused by the bundle before it ever reached a shell.
+ *
+ * Local until C6.1's `bridge/bridge-screencast-grant.ts` reaches main, which becomes the one
+ * source both sides read once they have both landed.
  */
 const BROWSER_BINARY_SCREENCAST_GRANT = 'screencastBinary'
 

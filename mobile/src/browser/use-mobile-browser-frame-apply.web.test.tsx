@@ -35,13 +35,16 @@ function frameAt(index: number): BrowserScreencastFrame {
 }
 
 /**
- * A decode the test finishes, because a real one is neither instant nor synchronous.
+ * Decodes the test finishes one at a time, because a real one is neither instant, synchronous, nor
+ * ordered against the frames that follow it.
  *
- * happy-dom resolves `decode()` in the next microtask for anything, which collapses the state the
- * flip exists to manage: the frame is on the hidden layer and not yet showing. Holding the promise
- * makes "offscreen" and "flipped" two observable moments rather than one.
+ * happy-dom resolves `decode()` in the next microtask for anything, which collapses both states
+ * the flip has to get right: a frame sitting on the hidden layer and not yet showing, and an
+ * earlier frame's decode landing after a newer frame has taken the same layer. Holding each
+ * promise, keyed on the source it was given, makes those separate observable moments.
  */
-const decodes: { pending: (() => void)[] } = { pending: [] }
+type PendingDecode = { uri: string; settle: (decoded: boolean) => void }
+const decodes: { pending: PendingDecode[] } = { pending: [] }
 let realImage: typeof window.Image
 
 beforeEach(() => {
@@ -49,7 +52,19 @@ beforeEach(() => {
   realImage = window.Image
   window.Image = class extends realImage {
     override decode(): Promise<void> {
-      return new Promise((resolve) => decodes.pending.push(() => resolve()))
+      const uri = this.src
+      return new Promise<void>((resolve, reject) => {
+        decodes.pending.push({
+          uri,
+          settle: (decoded) => {
+            if (decoded) {
+              resolve()
+            } else {
+              reject(new Error('the source image cannot be decoded'))
+            }
+          }
+        })
+      })
     }
   }
 })
@@ -58,12 +73,25 @@ afterEach(() => {
   window.Image = realImage
 })
 
+/** Settles the one decode whose source names this frame, and leaves every other pending. */
+async function settleDecode(frameName: string, decoded: boolean): Promise<void> {
+  const index = decodes.pending.findIndex((decode) => decode.uri.includes(frameName))
+  if (index === -1) {
+    throw new Error(`no decode is pending for ${frameName}`)
+  }
+  const [pending] = decodes.pending.splice(index, 1)
+  await act(async () => {
+    pending?.settle(decoded)
+    await Promise.resolve()
+  })
+}
+
 async function finishDecodes(): Promise<void> {
   const settling = decodes.pending
   decodes.pending = []
   await act(async () => {
-    for (const settle of settling) {
-      settle()
+    for (const decode of settling) {
+      decode.settle(true)
     }
     await Promise.resolve()
   })
@@ -94,6 +122,8 @@ function mountApplyHook() {
   const frameUriRef: { current: string | null } = { current: null }
   const pendingFrameLayerRef: { current: FrameLayer | null } = { current: null }
   const visibleFrameLayerRef: { current: FrameLayer } = { current: 0 }
+  /** Every render-triggering call the frame path makes, which is what "no re-render" means here. */
+  const stateWrites = { busy: 0, frameMetadata: 0, frameUri: 0 }
   const refs = {
     browserImageRefs: { current: asImages },
     browserLayerRefs: { current: asViews },
@@ -105,9 +135,15 @@ function mountApplyHook() {
     lastAppliedFrameAtRef: { current: 0 },
     pendingFrameLayerRef,
     pendingThrottledFrameRef: { current: null },
-    setBusy: () => {},
-    setFrameMetadata: () => {},
-    setFrameUri: () => {},
+    setBusy: () => {
+      stateWrites.busy += 1
+    },
+    setFrameMetadata: () => {
+      stateWrites.frameMetadata += 1
+    },
+    setFrameUri: () => {
+      stateWrites.frameUri += 1
+    },
     visibleFrameLayerRef
   }
   const held: { apply: ((frame: BrowserScreencastFrame, key: string) => void) | null } = {
@@ -124,7 +160,7 @@ function mountApplyHook() {
   if (apply === null) {
     throw new Error('nothing mounted')
   }
-  return { apply, imageHosts, layers, refs }
+  return { apply, imageHosts, layers, refs, stateWrites }
 }
 
 async function applyFrame(
@@ -195,9 +231,86 @@ describe('the page frame path', () => {
 
     await finishDecodes()
 
-    // Frame 2's decode resolved too and must not have flipped on its own: the pane would have
-    // shown the layer before frame 3 had painted. One flip, on the frame the layer is holding.
     expect(harness.refs.visibleFrameLayerRef.current).toBe(1)
     expect(harness.refs.pendingFrameLayerRef.current).toBeNull()
+  })
+
+  /**
+   * An older decode landing after a newer frame took the same layer must not flip it.
+   *
+   * The layer holds the newest frame's background by then, and that one has not been decoded yet:
+   * flipping on the older decode shows a layer the browser may not have painted. Ordered here
+   * rather than left to the harness, because settling both decodes ends in the same state either
+   * way and a test that only reads the end state passes with the guard deleted.
+   */
+  it('does not flip on a decode the layer has already moved past', async () => {
+    const harness = mountApplyHook()
+    await applyFrame(harness, frameAt(1))
+    await applyFrame(harness, frameAt(2))
+    await applyFrame(harness, frameAt(3))
+
+    await settleDecode('frame-2', true)
+
+    expect(harness.refs.visibleFrameLayerRef.current).toBe(0)
+    expect(harness.refs.pendingFrameLayerRef.current).toBe(1)
+
+    await settleDecode('frame-3', true)
+
+    expect(harness.refs.visibleFrameLayerRef.current).toBe(1)
+    expect(harness.refs.pendingFrameLayerRef.current).toBeNull()
+  })
+
+  /**
+   * The same ordering, with the older decode failing rather than succeeding.
+   *
+   * Freeing the pending slot on a stale failure hands the newest frame's own decode a slot that no
+   * longer names its layer, so its flip is refused and the pane sits on an old frame with the new
+   * one decoded at opacity 0. Nothing recovers it: a page that has gone still sends no further
+   * frame to repaint with.
+   */
+  it('does not free the pending slot a newer frame is using when an older decode fails', async () => {
+    const harness = mountApplyHook()
+    await applyFrame(harness, frameAt(1))
+    await applyFrame(harness, frameAt(2))
+    await applyFrame(harness, frameAt(3))
+
+    await settleDecode('frame-2', false)
+
+    expect(harness.refs.pendingFrameLayerRef.current).toBe(1)
+
+    await settleDecode('frame-3', true)
+
+    expect(harness.refs.visibleFrameLayerRef.current).toBe(1)
+    expect(backgroundOf(harness.imageHosts[1])).toContain('frame-3')
+  })
+
+  it('frees the pending slot when the frame the layer is holding cannot decode', async () => {
+    const harness = mountApplyHook()
+    await applyFrame(harness, frameAt(1))
+    await applyFrame(harness, frameAt(2))
+
+    await settleDecode('frame-2', false)
+
+    expect(harness.refs.pendingFrameLayerRef.current).toBeNull()
+    expect(harness.refs.visibleFrameLayerRef.current).toBe(0)
+  })
+
+  /**
+   * What "the pane never re-renders while it streams" means, counted.
+   *
+   * Every frame after the first is refs and two style writes. The three state setters are the only
+   * render-triggering calls the path can make, and they are spent on the first frame: the mount
+   * frame publishes its URI and metadata and clears busy, and nothing after it does.
+   */
+  it('writes no React state after the first frame, over a second of streaming', async () => {
+    const harness = mountApplyHook()
+
+    for (let index = 1; index <= 10; index += 1) {
+      await applyFrame(harness, frameAt(index))
+      await finishDecodes()
+    }
+
+    expect(harness.stateWrites).toEqual({ busy: 1, frameMetadata: 1, frameUri: 1 })
+    expect(backgroundOf(harness.imageHosts[1])).toContain('frame-10')
   })
 })

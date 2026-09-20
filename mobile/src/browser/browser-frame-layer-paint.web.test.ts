@@ -72,7 +72,7 @@ describe('the web siblings', () => {
     expect(host.style.backgroundImage).toBe('')
   })
 
-  it('flips the double buffer with one opacity write per layer and no re-render', () => {
+  it('flips the double buffer with one opacity write per layer', () => {
     const layers: [HTMLElement, HTMLElement] = [mountLayer(), mountLayer()]
 
     updateBrowserLayerVisibilityOnWeb([asViewRef(layers[0]), asViewRef(layers[1])], 1)
