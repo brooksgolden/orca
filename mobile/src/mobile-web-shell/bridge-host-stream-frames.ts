@@ -1,8 +1,9 @@
 import { BRIDGE_MAX_SUBSCRIPTIONS } from './bridge/bridge-caps'
 import type { BridgeClientMessage } from './bridge/bridge-envelope'
 import { isBridgeNativeMethod } from './bridge/bridge-native-verbs'
-import { bridgeServesBinaryFrames } from './bridge/bridge-screencast-grant'
+import { bridgeBinaryLaneVerdict } from './bridge/bridge-screencast-grant'
 import { BridgeCapExceededError, BridgeNativeVerbRefusedError } from './bridge-host-errors'
+import type { BridgeHostDiagnostic } from './bridge-host-contract'
 import type { BridgeHostSubscriptions } from './bridge-host-subscriptions'
 
 export type BridgeSubscribeMessage = Extract<BridgeClientMessage, { type: 'subscribe' }>
@@ -33,8 +34,9 @@ export function createBridgeHostStreamFrames(deps: {
   sendError: (id: string, error: unknown) => void
   /** The session's resolved grants, which decide whether the binary screencast lane is served. */
   granted: readonly string[]
+  report: (diagnostic: BridgeHostDiagnostic) => void
 }): BridgeHostStreamFrames {
-  const { requests, subscriptions, sendError, granted } = deps
+  const { requests, subscriptions, sendError, granted, report } = deps
   return {
     open: (message) => {
       const { id } = message
@@ -61,13 +63,12 @@ export function createBridgeHostStreamFrames(deps: {
         sendError(id, new BridgeCapExceededError(`over ${BRIDGE_MAX_SUBSCRIPTIONS} subscriptions`))
         return
       }
+      const lane = bridgeBinaryLaneVerdict({ wantsBinary: message.wantsBinary, granted })
+      if (lane === 'ungranted') {
+        report({ kind: 'binary-lane-refused', id })
+      }
       try {
-        subscriptions.start(
-          id,
-          message.method,
-          message.params,
-          bridgeServesBinaryFrames({ wantsBinary: message.wantsBinary, granted })
-        )
+        subscriptions.start(id, message.method, message.params, lane === 'serve')
       } catch (error) {
         sendError(id, error)
       }

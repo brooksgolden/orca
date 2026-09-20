@@ -14,6 +14,12 @@
 export const BRIDGE_SCREENCAST_BINARY_GRANT = 'screencastBinary'
 
 /**
+ * Three outcomes rather than a boolean, because two of them are the same answer for different
+ * reasons and only one of them is worth reporting.
+ */
+export type BridgeBinaryLaneVerdict = 'serve' | 'not-asked' | 'ungranted'
+
+/**
  * Whether this session's subscribe gets the binary lane.
  *
  * Both halves, and neither implies the other. The page asks, because encoding costs the shell a
@@ -21,14 +27,19 @@ export const BRIDGE_SCREENCAST_BINARY_GRANT = 'screencastBinary'
  * session was granted it, because grants are per route: without this any route's page could ask for
  * a lane its route never declared, which is the hole per-route grants exist to close.
  *
- * Ungranted is not a refusal. The subscription proceeds and its JSON events cross as they always
- * have — the same silence every other grant gives at the call site, and a state a page that reads
- * its own `init.grants.native` never reaches.
+ * Ungranted is not a refusal on the wire. The subscription proceeds and its JSON events cross as
+ * they always have — the same silence every other grant gives at the call site, and a state a page
+ * that reads its own `init.grants.native` never reaches. It is named apart from `not-asked` so the
+ * host can say so locally: nothing crosses back, so without a diagnostic a page that did ask gets
+ * JSON for the life of the document with no side able to say why.
  */
-export function bridgeServesBinaryFrames(args: {
+export function bridgeBinaryLaneVerdict(args: {
   wantsBinary: boolean | undefined
   /** The session's resolved list: what its route declared, narrowed to what this shell implements. */
   granted: readonly string[]
-}): boolean {
-  return args.wantsBinary === true && args.granted.includes(BRIDGE_SCREENCAST_BINARY_GRANT)
+}): BridgeBinaryLaneVerdict {
+  if (args.wantsBinary !== true) {
+    return 'not-asked'
+  }
+  return args.granted.includes(BRIDGE_SCREENCAST_BINARY_GRANT) ? 'serve' : 'ungranted'
 }

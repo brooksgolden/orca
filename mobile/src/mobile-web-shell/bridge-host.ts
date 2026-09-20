@@ -183,7 +183,8 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
     requests,
     subscriptions,
     sendError,
-    granted
+    granted,
+    report: (diagnostic) => options.onDiagnostic?.(diagnostic)
   })
 
   /** The client's own work runs inside these calls, and a throw from one would otherwise escape into

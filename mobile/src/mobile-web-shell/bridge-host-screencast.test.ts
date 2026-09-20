@@ -224,6 +224,30 @@ describe('the binary lane is served only to a route granted it', () => {
     expect(bridge.frames().filter((message) => message.type === 'error')).toEqual([])
   })
 
+  /**
+   * Nothing crosses back for an ungranted ask, so without this the page gets JSON for the life of
+   * the document and no side says why. Local only, like every other grant refusal: the wire is
+   * exactly what the case above pins.
+   */
+  it('reports the ungranted ask as a diagnostic and changes nothing on the wire', () => {
+    const bridge = harness({ ready: true, routeGrants: ['navigate', 'storage'] })
+    bridge.host.receive(screencastSubscribe(ID, true))
+    expect(bridge.diagnostics).toEqual([{ kind: 'binary-lane-refused', id: ID }])
+    expect(bridge.frames().filter((message) => message.type === 'error')).toEqual([])
+  })
+
+  it('says nothing about a page that never asked for the lane', () => {
+    const bridge = harness({ ready: true, routeGrants: ['navigate', 'storage'] })
+    bridge.host.receive(screencastSubscribe(ID))
+    expect(bridge.diagnostics).toEqual([])
+  })
+
+  it('says nothing when the route was granted the lane', () => {
+    const bridge = harness({ ready: true, routeGrants: ['navigate', 'screencastBinary'] })
+    bridge.host.receive(screencastSubscribe(ID, true))
+    expect(bridge.diagnostics).toEqual([])
+  })
+
   it('offers the lane in init exactly when it will serve it', () => {
     const granted = harness({ ready: true, routeGrants: ['navigate', 'screencastBinary'] })
     const ungranted = harness({ ready: true, routeGrants: ['navigate', 'storage'] })

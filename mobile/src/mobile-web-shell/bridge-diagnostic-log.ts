@@ -71,6 +71,12 @@ export function createBridgeDiagnosticReporter(): (diagnostic: BridgeHostDiagnos
       console.warn('[web-shell-bridge] the client threw on a page notification', diagnostic.error)
       return
     }
+    if (diagnostic.kind === 'binary-lane-refused') {
+      console.warn('[web-shell-bridge] a page asked for screencast frames it was not granted', {
+        id: diagnostic.id
+      })
+      return
+    }
     if (diagnostic.kind === 'binary-frame-dropped') {
       // Once per host, like every other kind, which is why the running total is on the dev facts:
       // a stream shedding a frame a second prints this line exactly as often as one that shed one.

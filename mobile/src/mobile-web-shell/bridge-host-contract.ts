@@ -40,6 +40,10 @@ export type BridgeHostDiagnostic =
   /** The shell asked this host to open a screen the protocol does not allow. The host serves no
    *  session at all in that state: an `init` the page refuses is worse than no `init`. */
   | { kind: 'route-refused'; issue: string }
+  /** A page subscribed with `wantsBinary` on a session whose route was never granted the lane.
+   *  Local only: the subscription proceeds and its JSON events cross, so nothing crosses back and
+   *  this line is the only thing that can say why the frames never became binary. */
+  | { kind: 'binary-lane-refused'; id: string }
   /** A screencast frame that would not fit the envelope or the stream's unacked window. Dropped
    *  rather than ending the stream, so this line and the count beside it are the only evidence
    *  the frame existed. `bytes` is the whole event, which is what was measured against the cap. */
