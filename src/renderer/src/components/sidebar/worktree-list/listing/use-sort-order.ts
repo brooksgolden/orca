@@ -8,6 +8,7 @@ import type { Repo } from '../../../../../../shared/repo-types'
 import type { Worktree } from '../../../../../../shared/worktree/types'
 import {
   buildWorktreeComparator,
+  buildStatusGroupedSmartComparator,
   buildWorktreeSortLabels,
   compareWorktreeSortLabel,
   type SortBy
@@ -137,7 +138,7 @@ export function useSidebarWorktreeSortOrder(args: {
 
     // Why precompute: hot sort — build the attention map once so the O(N log N) comparator does O(1) lookups.
     const attentionByWorktree =
-      sortBy === 'smart'
+      sortBy === 'smart' || sortBy === 'recent'
         ? buildAttentionByWorktree(
             nonArchivedWorktrees,
             state.tabsByWorktree,
@@ -149,8 +150,17 @@ export function useSidebarWorktreeSortOrder(args: {
             state.terminalLayoutsByTabId
           )
         : new Map<string, WorktreeAttention>()
+    const comparator = buildWorktreeComparator(sortBy, repoMap, now, attentionByWorktree, labels)
     nonArchivedWorktrees.sort(
-      buildWorktreeComparator(sortBy, repoMap, now, attentionByWorktree, labels)
+      sortBy === 'smart' && state.groupBy === 'workspace-status'
+        ? buildStatusGroupedSmartComparator(
+            comparator,
+            now,
+            state.workspaceStatuses,
+            attentionByWorktree,
+            labels
+          )
+        : comparator
     )
     return {
       sortedIds: nonArchivedWorktrees.map((w) => w.id),

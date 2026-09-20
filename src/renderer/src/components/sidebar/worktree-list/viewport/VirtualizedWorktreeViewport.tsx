@@ -342,6 +342,19 @@ export const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktr
           virtualItems
         })}
         onKeyDown={handleContainerKeyDown}
+        onClickCapture={(event) => {
+          const target = event.target
+          if (!(target instanceof HTMLElement)) {
+            return
+          }
+          if (!target.closest('[data-worktree-card-surface]')) {
+            return
+          }
+          if (target.closest('button, a, input, textarea, select, [contenteditable]')) {
+            return
+          }
+          scrollRef.current?.focus({ preventScroll: true })
+        }}
         // Why: trackpad momentum fires sparse scroll events after the input stream quiets; suppress correction until the viewport stops.
         onScroll={handleScroll}
         onPointerDown={handleScrollPointerDown}

@@ -1,6 +1,7 @@
 import type { Repo } from '../../../../shared/repo-types'
 import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { Worktree } from '../../../../shared/worktree/types'
+import type { Worktree, WorkspaceStatusDefinition } from '../../../../shared/worktree/types'
+import { getWorkspaceStatus } from '../../../../shared/workspace-statuses'
 import type {
   AgentStatusEntry,
   MigrationUnsupportedPtyEntry
@@ -49,6 +50,17 @@ export function effectiveRecentActivity(worktree: Worktree, now: number): number
 }
 
 export type WorktreeSortLabelInput = Pick<Worktree, 'displayName' | 'path' | 'id'>
+
+function effectiveAgentActivity(
+  worktree: Worktree,
+  now: number,
+  attentionByWorktree: ReadonlyMap<string, WorktreeAttention>
+): number {
+  return Math.max(
+    effectiveRecentActivity(worktree, now),
+    attentionByWorktree.get(worktree.id)?.attentionTimestamp ?? 0
+  )
+}
 
 export function getWorktreeSortLabel(worktree: WorktreeSortLabelInput): string {
   const displayName = typeof worktree.displayName === 'string' ? worktree.displayName.trim() : ''
@@ -135,11 +147,10 @@ export function buildWorktreeComparator(
         // Why not sortOrder: sortOrder is a snapshot of the smart-sort
         // ranking that only gets repersisted while the user is in "Smart"
         // mode, so it's frozen in Recent mode and ignores new terminal
-        // events, meta edits, etc. lastActivityAt is the real "recency"
-        // signal — bumped by bumpWorktreeActivity (PTY spawn, background
-        // events) and by meaningful meta edits (comment, isUnread).
+        // events and meta edits. Recent uses saved and agent activity times.
         return (
-          effectiveRecentActivity(b, now) - effectiveRecentActivity(a, now) ||
+          effectiveAgentActivity(b, now, attentionByWorktree) -
+            effectiveAgentActivity(a, now, attentionByWorktree) ||
           compareWorktreeSortLabel(a, b, labels)
         )
       case 'repo': {
@@ -157,6 +168,29 @@ export function buildWorktreeComparator(
           compareWorktreeSortLabel(a, b, labels)
         )
     }
+  }
+}
+
+/** Within the Done lane, agent attention is finished; order by actual activity. */
+export function buildStatusGroupedSmartComparator(
+  base: (a: Worktree, b: Worktree) => number,
+  now: number,
+  statuses: readonly WorkspaceStatusDefinition[],
+  attentionByWorktree: ReadonlyMap<string, WorktreeAttention>,
+  labels?: WorktreeSortLabels
+): (a: Worktree, b: Worktree) => number {
+  return (a, b) => {
+    const aStatus = getWorkspaceStatus(a, statuses)
+    const bStatus = getWorkspaceStatus(b, statuses)
+    if (aStatus !== bStatus) {
+      return aStatus.localeCompare(bStatus)
+    }
+    if (aStatus === 'completed') {
+      const aRecent = effectiveAgentActivity(a, now, attentionByWorktree)
+      const bRecent = effectiveAgentActivity(b, now, attentionByWorktree)
+      return bRecent - aRecent || compareWorktreeSortLabel(a, b, labels)
+    }
+    return base(a, b)
   }
 }
 

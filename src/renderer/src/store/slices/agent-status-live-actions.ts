@@ -1,4 +1,6 @@
 import { resolvePaneKey } from '../../lib/agent-status-pane-ownership'
+import { getRepoExecutionHostId } from '../../../../shared/execution-host'
+import { parseWorkspaceKey } from '../../../../shared/workspace-scope'
 import type { AgentStatusSlice } from './agent-status-slice-contract'
 import type { AgentStatusRuntime } from './agent-status-runtime'
 import type {
@@ -20,6 +22,7 @@ import { reduceAgentStatusLiveUpdate } from './agent-status-live-reducer'
 import type { FreshnessLiveEntryDelta } from './agent-status-freshness-scheduler'
 import {
   agentStatusTabAlreadyHasProtectedOrGeneratedTitle,
+  findAgentPaneWorktreeId,
   getTabIdFromPaneKey,
   isRecentlyClosedAgentStatusTab
 } from './agent-status-pane-key-tab-binding'
@@ -142,6 +145,60 @@ export function createAgentStatusLiveActions(
       return
     }
     const { entry } = builtResult
+    const observationAt = entry.evidenceObservedAt ?? entry.updatedAt
+    const startedNewWork =
+      entry.state === 'working' &&
+      (builtResult.existing?.state !== 'working' || builtResult.commandCodeNewTurn) &&
+      entry.restoredUnconfirmed !== true &&
+      Math.abs(Date.now() - observationAt) < 60_000
+    if (startedNewWork) {
+      const worktreeId = entry.worktreeId ?? findAgentPaneWorktreeId(get(), paneKey)
+      const current = get()
+      let worktree =
+        worktreeId && parseWorkspaceKey(worktreeId)?.type === 'folder'
+          ? current.getKnownWorktreeById(worktreeId)
+          : undefined
+      let executionHostId = worktree?.hostId
+      if (worktreeId && !worktree) {
+        let ambiguousOwner = false
+        for (const repo of current.repos) {
+          if (
+            entry.connectionId !== undefined &&
+            (repo.connectionId ?? null) !== entry.connectionId
+          ) {
+            continue
+          }
+          const hostId = getRepoExecutionHostId(repo)
+          const candidate = current.getKnownWorktreeById(worktreeId, hostId)
+          if (candidate?.repoId !== repo.id) {
+            continue
+          }
+          if (worktree && executionHostId !== hostId) {
+            ambiguousOwner = true
+            break
+          }
+          worktree = candidate
+          executionHostId = hostId
+        }
+        if (ambiguousOwner) {
+          worktree = undefined
+        }
+      }
+      if (worktree) {
+        const completed = worktree.workspaceStatus === 'completed'
+        const canReopen = current.workspaceStatuses.some((status) => status.id === 'in-progress')
+        // A real new turn is activity even in the selected workspace, whose PTY output
+        // deliberately does not trigger a sidebar reorder just from being clicked.
+        void current.updateWorktreeMeta(
+          worktree.id,
+          {
+            lastActivityAt: Date.now(),
+            ...(completed && canReopen ? { workspaceStatus: 'in-progress' } : {})
+          },
+          { executionHostId: executionHostId ?? 'local' }
+        )
+      }
+    }
     // Sticky orchestration titles are replaced only when they still describe this dispatch.
     const hasMatchingOrchestrationLabels = Boolean(
       (entry.orchestration?.displayName?.trim() || entry.orchestration?.taskTitle?.trim()) &&

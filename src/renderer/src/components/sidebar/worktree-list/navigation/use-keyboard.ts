@@ -16,6 +16,7 @@ import {
   resolveCycledWorktreeId
 } from '../../worktree-keyboard-cycle'
 import { findPreferredRenderRowIndexForWorktreeIdentity } from './render-row-lookup'
+import { getWorkspaceStatus } from '../../../../../../shared/workspace-statuses'
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -157,11 +158,45 @@ export function useWorktreeListKeyboardNavigation(args: {
           helper.focus()
         }
         e.preventDefault()
+      } else if (
+        (e.key === 'Delete' || (getShortcutPlatform() === 'darwin' && e.key === 'Backspace')) &&
+        !e.altKey &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.shiftKey &&
+        e.target === e.currentTarget &&
+        activeModal === 'none'
+      ) {
+        const state = useAppStore.getState()
+        const worktree = activeWorktreeId
+          ? state.getKnownWorktreeById(
+              activeWorktreeId,
+              activeWorkspaceExecutionHostId ?? undefined
+            )
+          : undefined
+        if (
+          worktree &&
+          state.workspaceStatuses.some((status) => status.id === 'completed') &&
+          getWorkspaceStatus(worktree, state.workspaceStatuses) === 'in-progress'
+        ) {
+          e.preventDefault()
+          void state.updateWorktreeMeta(
+            worktree.id,
+            { workspaceStatus: 'completed' },
+            { executionHostId: activeWorkspaceExecutionHostId ?? worktree.hostId ?? 'local' }
+          )
+        }
       } else if (['PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) {
         markDirectScrollInput()
       }
     },
-    [markDirectScrollInput, navigateWorktree]
+    [
+      activeModal,
+      activeWorktreeId,
+      activeWorkspaceExecutionHostId,
+      markDirectScrollInput,
+      navigateWorktree
+    ]
   )
 
   return { handleContainerKeyDown }

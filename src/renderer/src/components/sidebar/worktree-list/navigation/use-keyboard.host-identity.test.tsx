@@ -9,15 +9,28 @@ import type { RenderRow } from '../listing/render-row'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 
 const activateAndRevealWorktree = vi.fn()
+const updateWorktreeMeta = vi.hoisted(() => vi.fn().mockResolvedValue({ ok: true }))
 
 vi.mock('@/lib/worktree-activation', () => ({
   activateAndRevealWorktree: (...args: unknown[]) => activateAndRevealWorktree(...args)
 }))
 
-vi.mock('@/store', () => ({
-  useAppStore: (selector: (state: { keybindings: undefined }) => unknown) =>
-    selector({ keybindings: undefined })
-}))
+vi.mock('@/store', () => {
+  const state = {
+    keybindings: undefined,
+    workspaceStatuses: [
+      { id: 'in-progress', label: 'In progress', color: 'blue', icon: 'circle' },
+      { id: 'completed', label: 'Done', color: 'green', icon: 'check' }
+    ],
+    getKnownWorktreeById: (id: string) => ({ id, workspaceStatus: 'in-progress', hostId: 'local' }),
+    updateWorktreeMeta
+  }
+  return {
+    useAppStore: Object.assign((selector: (value: typeof state) => unknown) => selector(state), {
+      getState: () => state
+    })
+  }
+})
 
 const { useWorktreeListKeyboardNavigation } = await import('./use-keyboard')
 
@@ -64,8 +77,8 @@ function press(direction: 'up' | 'down'): void {
 }
 
 function renderProbe(activeWorktreeId: string, activeHostId: 'local' | null): void {
-  function Probe(): null {
-    useWorktreeListKeyboardNavigation({
+  function Probe() {
+    const { handleContainerKeyDown } = useWorktreeListKeyboardNavigation({
       rows,
       renderRows,
       activeWorktreeId,
@@ -76,13 +89,14 @@ function renderProbe(activeWorktreeId: string, activeHostId: 'local' | null): vo
       activeModal: 'none',
       markDirectScrollInput: () => {}
     })
-    return null
+    return <div data-testid="workspace-list" onKeyDown={handleContainerKeyDown} />
   }
   act(() => root.render(<Probe />))
 }
 
 beforeEach(() => {
   activateAndRevealWorktree.mockClear()
+  updateWorktreeMeta.mockClear()
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -118,5 +132,24 @@ describe('worktree keyboard cycling with a resolved active host', () => {
     press('down')
 
     expect(activateAndRevealWorktree).toHaveBeenCalledWith('c', {})
+  })
+
+  it('moves the selected In progress workspace to Done only when Delete is pressed in the list', () => {
+    renderProbe('b', 'local')
+    const list = container.querySelector('[data-testid="workspace-list"]')!
+    act(() => {
+      list.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }))
+    })
+    expect(updateWorktreeMeta).toHaveBeenCalledWith(
+      'b',
+      { workspaceStatus: 'completed' },
+      { executionHostId: 'local' }
+    )
+
+    updateWorktreeMeta.mockClear()
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }))
+    })
+    expect(updateWorktreeMeta).not.toHaveBeenCalled()
   })
 })
