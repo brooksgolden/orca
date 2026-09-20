@@ -80,6 +80,10 @@
     {
       "file": "src/browser/use-browser-binary-screencast-grant.web.ts",
       "reason": "Natively the socket carries the binary screencast frame and this app is both halves of that path, so there is nothing to negotiate. In the page the frames come through a shell that may predate the encoder, and subscribing with wantsBinary against one leaves the pane on a stream no frame can arrive on. This file asks the shell through the grants init carried, per C6 ruling 5."
+    },
+    {
+      "file": "src/browser/browser-screencast-request.web.ts",
+      "reason": "Not an RN Web API gap but a transport one that exists only in the page: a screencast frame crosses the bridge as one message under BRIDGE_MAX_MESSAGE_BYTES, and a phone's mobile view at the native device scale factor produces a worst-case JPEG larger than that. This file budgets the mobile view's area against the cap, the envelope it measures rather than names, and one worst-case bytes-per-pixel constant. Web view mode is untouched, because a letterboxed desktop viewport is not an area the page can predict."
     }
   ]
 }
