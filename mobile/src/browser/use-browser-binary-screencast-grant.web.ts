@@ -1,12 +1,13 @@
 import { usePageBridgeClient } from '../transport/client-context.web'
 
 /**
- * PLACEHOLDER. C6.1 owns the shell-side name and had not reported it when this landed, so this one
- * constant stands in for it and is the only line to change when it does. Until then no shipped
- * shell names it, the pane never asks for binary frames on the web, and it says so on screen
- * instead of waiting on frames that cannot come — which is the behaviour this seam exists for.
+ * The name C6.1 gives the binary screencast lane in the shell's implemented set.
+ *
+ * One camelCase token rather than a dotted path: `GRANT_NAME_PATTERN` in the manifest contract
+ * admits a bare name or a `native.`-prefixed verb and nothing else, so a route declaring a dotted
+ * non-verb name would be refused by the bundle before it ever reached a shell.
  */
-const BROWSER_BINARY_SCREENCAST_GRANT = 'browser.screencast.binary'
+const BROWSER_BINARY_SCREENCAST_GRANT = 'screencastBinary'
 
 /**
  * Web sibling: the page asks the shell it is running inside, through the grants `init` gave it.
