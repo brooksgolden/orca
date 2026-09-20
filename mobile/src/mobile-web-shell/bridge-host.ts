@@ -110,7 +110,14 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
     send({ v: BRIDGE_PROTOCOL_VERSION, type: 'error', id, error: captureBridgeError(error) })
   }
 
-  const subscriptions = new BridgeHostSubscriptions({ client, post: sendJson })
+  const subscriptions = new BridgeHostSubscriptions({
+    client,
+    post: sendJson,
+    onBinaryFrameDropped: ({ id, bytes, droppedOnStream }) => {
+      options.onDiagnostic?.({ kind: 'binary-frame-dropped', id, bytes, dropped: droppedOnStream })
+      options.onBinaryFramesDropped?.(subscriptions.droppedBinaryFrames)
+    }
+  })
 
   /** `state` is the event's own value: a listener can run before the getter it mirrors is updated. */
   function snapshot(state?: ConnectionState): BridgeConnectionSnapshot {

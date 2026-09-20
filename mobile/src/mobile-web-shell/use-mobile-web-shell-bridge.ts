@@ -87,6 +87,8 @@ export function useMobileWebShellBridge(args: {
   onPageReady: () => void
   /** This shell named a screen the protocol does not allow, so no session is served. */
   onRouteRefused: (issue: string) => void
+  /** Every screencast frame this host has dropped, so the shell can show the running total. */
+  onBinaryFramesDropped: (total: number) => void
 }): MobileWebShellBridgeView {
   const { client } = useHostClient(args.hostId)
   const ready = args.session.kind === 'ready' ? args.session : null
@@ -113,6 +115,7 @@ export function useMobileWebShellBridge(args: {
   const pageFaultRef = useRef(args.onPageFault)
   const pageReadyRef = useRef(args.onPageReady)
   const routeRefusedRef = useRef(args.onRouteRefused)
+  const binaryFramesDroppedRef = useRef(args.onBinaryFramesDropped)
   // Commit-phase and declared above the host's effect, so the host is built against what this
   // render passed: a native frame can land between a commit and a passive effect.
   useLayoutEffect(() => {
@@ -128,7 +131,9 @@ export function useMobileWebShellBridge(args: {
     pageFaultRef.current = args.onPageFault
     pageReadyRef.current = args.onPageReady
     routeRefusedRef.current = args.onRouteRefused
+    binaryFramesDroppedRef.current = args.onBinaryFramesDropped
   }, [
+    args.onBinaryFramesDropped,
     args.onExternalLink,
     args.serveNativeVerb,
     args.onNavigate,
@@ -167,6 +172,9 @@ export function useMobileWebShellBridge(args: {
       },
       onRouteRefused: (issue) => {
         routeRefusedRef.current(issue)
+      },
+      onBinaryFramesDropped: (total) => {
+        binaryFramesDroppedRef.current(total)
       },
       onNavigate: (href) => {
         navigateRef.current(href)

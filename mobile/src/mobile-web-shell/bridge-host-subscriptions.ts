@@ -25,6 +25,18 @@ type OpenSubscription = {
   seq: number
   unacked: UnackedFrame[]
   unackedBytes: number
+  /** Binary frames this stream could not carry. Per stream, which is what tells a stream losing
+   *  frames steadily from one that lost a single burst. */
+  droppedFrames: number
+}
+
+/** A screencast frame the shell could not deliver, as the host reports it. */
+export type BridgeDroppedBinaryFrame = {
+  id: string
+  /** The whole event frame, not the image: what was measured against the cap. */
+  bytes: number
+  /** On this stream, counting from its subscribe. */
+  droppedOnStream: number
 }
 
 /**
@@ -41,12 +53,27 @@ export class BridgeHostSubscriptions {
       client: RpcClient
       /** Fire and forget: the host owns rejection logging, and no post proves delivery. */
       post: (json: string) => void
+      /** One call per dropped screencast frame. The host reports it and raises the total. */
+      onBinaryFrameDropped: (dropped: BridgeDroppedBinaryFrame) => void
     }
   ) {}
 
   get size(): number {
     return this.open.size
   }
+
+  /**
+   * Every binary frame this host could not carry, across all of its streams and their whole lives.
+   *
+   * A total rather than a per-stream number, because the surface that shows it is the shell's dev
+   * facts and a resubscribe must not reset what it reads. The per-stream count rides the
+   * diagnostic.
+   */
+  get droppedBinaryFrames(): number {
+    return this.droppedTotal
+  }
+
+  private droppedTotal = 0
 
   has(id: string): boolean {
     return this.open.has(id)
@@ -64,7 +91,8 @@ export class BridgeHostSubscriptions {
       unsubscribe: () => undefined,
       seq: 0,
       unacked: [],
-      unackedBytes: 0
+      unackedBytes: 0,
+      droppedFrames: 0
     }
     this.open.set(id, record)
     let unsubscribe: () => void
@@ -144,7 +172,7 @@ export class BridgeHostSubscriptions {
       this.cancel(id, 'closed')
       return
     }
-    this.sendEvent(id, record, seq, json)
+    this.sendEvent(id, record, seq, json, false)
   }
 
   /**
@@ -171,20 +199,42 @@ export class BridgeHostSubscriptions {
         id,
         seq,
         binary: encodeBridgeScreencastFrame(frame)
-      })
+      }),
+      true
     )
   }
 
-  private sendEvent(id: string, record: OpenSubscription, seq: number, json: string): void {
+  /**
+   * One frame out, or the stream's verdict on a frame that will not fit.
+   *
+   * The two kinds part here and nowhere else. A JSON event that cannot be carried ends the stream,
+   * because its reader cannot see the hole it would leave and a transcript with a gap is worse than
+   * one that stopped. A screencast frame is dropped and the stream lives: the next frame is one
+   * throttle interval away, the pane is still showing the last one, and ending the stream would
+   * black out a browser tab over a page that merely failed to compress.
+   */
+  private sendEvent(
+    id: string,
+    record: OpenSubscription,
+    seq: number,
+    json: string,
+    binary: boolean
+  ): void {
     const bytes = utf8ByteLength(json)
     // An event is never chunked, so one over the frame cap would be refused by the page's reader
     // and leave a hole nothing reports. Over the window, or too big to carry: same verdict, because
-    // both mean this stream cannot be delivered whole.
+    // both mean this frame cannot be delivered whole.
     if (
       bytes > BRIDGE_MAX_MESSAGE_BYTES ||
       record.unacked.length >= BRIDGE_MAX_UNACKED_FRAMES ||
       record.unackedBytes + bytes > BRIDGE_MAX_UNACKED_BYTES
     ) {
+      if (binary) {
+        record.droppedFrames += 1
+        this.droppedTotal += 1
+        this.options.onBinaryFrameDropped({ id, bytes, droppedOnStream: record.droppedFrames })
+        return
+      }
       this.cancel(id, 'overflow')
       return
     }
