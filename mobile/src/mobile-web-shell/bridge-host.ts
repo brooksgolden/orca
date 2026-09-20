@@ -177,8 +177,6 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
     })
   })
 
-  // `wantsBinary` is read by the contract and acted on in C6, which owns the screencast encoder and
-  // the measurement that earns it. Until then every stream crosses as JSON.
   function handleSubscribe(message: SubscribeMessage): void {
     const { id } = message
     // Collision first: both refusals settle the same exchange, and an id already in flight is the
@@ -205,7 +203,7 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
       return
     }
     try {
-      subscriptions.start(id, message.method, message.params)
+      subscriptions.start(id, message.method, message.params, message.wantsBinary)
     } catch (error) {
       sendError(id, error)
     }

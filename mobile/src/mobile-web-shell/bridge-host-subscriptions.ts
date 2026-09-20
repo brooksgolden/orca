@@ -1,5 +1,7 @@
 import { BRIDGE_MAX_MESSAGE_BYTES, utf8ByteLength } from './bridge/bridge-caps'
 import { BRIDGE_PROTOCOL_VERSION, type BridgeHostMessage } from './bridge/bridge-envelope'
+import { encodeBridgeScreencastFrame } from './bridge/bridge-screencast-encoder'
+import type { BrowserScreencastFrame } from '../transport/browser-screencast-protocol'
 import type { RpcClient } from '../transport/rpc-client'
 
 /** Derived, so an arm added to the envelope's closed list is a compile error here rather than a
@@ -50,8 +52,14 @@ export class BridgeHostSubscriptions {
     return this.open.has(id)
   }
 
-  /** Throws whatever `client.subscribe` throws; the caller answers the page with `error`. */
-  start(id: string, method: string, params: unknown): void {
+  /**
+   * Throws whatever `client.subscribe` throws; the caller answers the page with `error`.
+   *
+   * `wantsBinary` is the page saying it has a listener for the screencast's `Uint8Array` frames.
+   * Asked for only then, because encoding one costs the shell a base64 pass over the whole image
+   * and a page with no listener would pay for frames it drops.
+   */
+  start(id: string, method: string, params: unknown, wantsBinary = false): void {
     const record: OpenSubscription = {
       unsubscribe: () => undefined,
       seq: 0,
@@ -61,8 +69,11 @@ export class BridgeHostSubscriptions {
     this.open.set(id, record)
     let unsubscribe: () => void
     try {
-      unsubscribe = this.options.client.subscribe(method, params, (payload) =>
-        this.deliver(id, payload)
+      unsubscribe = this.options.client.subscribe(
+        method,
+        params,
+        (payload) => this.deliver(id, payload),
+        wantsBinary ? { onBinaryFrame: (frame) => this.deliverBinaryFrame(id, frame) } : undefined
       )
     } catch (error) {
       this.open.delete(id)
@@ -133,6 +144,38 @@ export class BridgeHostSubscriptions {
       this.cancel(id, 'closed')
       return
     }
+    this.sendEvent(id, record, seq, json)
+  }
+
+  /**
+   * The screencast's binary frames, on the same ledger as the stream's JSON events.
+   *
+   * One `seq` sequence across both kinds, because the page acks by it: a binary frame that
+   * restarted or skipped the count would ack frames the shell never sent. Nothing here can throw
+   * the way an arbitrary stream payload can — every field is a number, a closed-list string or the
+   * base64 image — so there is no serialization arm.
+   */
+  private deliverBinaryFrame(id: string, frame: BrowserScreencastFrame): void {
+    const record = this.open.get(id)
+    if (record === undefined) {
+      return
+    }
+    const seq = record.seq + 1
+    this.sendEvent(
+      id,
+      record,
+      seq,
+      JSON.stringify({
+        v: BRIDGE_PROTOCOL_VERSION,
+        type: 'event',
+        id,
+        seq,
+        binary: encodeBridgeScreencastFrame(frame)
+      })
+    )
+  }
+
+  private sendEvent(id: string, record: OpenSubscription, seq: number, json: string): void {
     const bytes = utf8ByteLength(json)
     // An event is never chunked, so one over the frame cap would be refused by the page's reader
     // and leave a hole nothing reports. Over the window, or too big to carry: same verdict, because
