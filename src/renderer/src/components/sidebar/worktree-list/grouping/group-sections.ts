@@ -30,9 +30,11 @@ import type {
   WorktreeGroupBy
 } from './row-types'
 import { orderMainWorktreeFirst } from './section-order'
+import { folderWorkspaceToWorktree } from '../../../../../../shared/folder-workspace-worktree'
 
 /** Everything section emission reads that stays fixed for one buildRows call. */
 export type SectionAppendContext = {
+  doneLaneComparator?: (a: Worktree, b: Worktree) => number
   result: Row[]
   groupBy: WorktreeGroupBy
   collapsedGroups: Set<string>
@@ -201,6 +203,7 @@ export function appendOrderedGroups(
       // host labels, which are keyed by host-qualified identity.
       const hostContextLabelByWorktreeIdentity =
         groupBy === 'repo' && hostContextLabelByRepoId ? undefined : mixedWorktreeHostContextLabels
+      const laneStart = result.length
       appendWorktreeRows(result, items, repoMap, lineageById, worktreeMap, {
         nestLineage,
         collapsedGroups,
@@ -210,8 +213,39 @@ export function appendOrderedGroups(
         hostContextLabelByWorktreeIdentity,
         cyclicLineageIds
       })
-      for (const pair of folderPairs) {
-        result.push(buildFolderWorkspaceRow(pair, projectGroupDepth))
+      const compare =
+        groupBy === 'workspace-status' &&
+        getWorkspaceStatusFromGroupKey(key, workspaceStatuses) === 'completed'
+          ? ctx.doneLaneComparator
+          : undefined
+      const orderedFolders = compare
+        ? [...folderPairs].sort((a, b) =>
+            compare(
+              folderWorkspaceToWorktree(a.folderWorkspace),
+              folderWorkspaceToWorktree(b.folderWorkspace)
+            )
+          )
+        : folderPairs
+      for (const pair of orderedFolders) {
+        const row = buildFolderWorkspaceRow(pair, projectGroupDepth)
+        const folder = folderWorkspaceToWorktree(pair.folderWorkspace)
+        // Insert at root boundaries so existing parent/child blocks stay together.
+        const index = compare
+          ? result.findIndex(
+              (candidate, index) =>
+                index >= laneStart &&
+                ((candidate.type === 'item' &&
+                  candidate.depth === 0 &&
+                  compare(folder, candidate.worktree) < 0) ||
+                  (candidate.type === 'folder-workspace' &&
+                    compare(folder, folderWorkspaceToWorktree(candidate.folderWorkspace)) < 0))
+            )
+          : -1
+        if (index < 0) {
+          result.push(row)
+        } else {
+          result.splice(index, 0, row)
+        }
       }
     }
   }

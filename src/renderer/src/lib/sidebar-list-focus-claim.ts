@@ -1,43 +1,31 @@
 const SIDEBAR_LIST_SELECTOR = '[role="listbox"][data-worktree-sidebar]'
 
-let claimed = false
+let claimedList: HTMLElement | null = null
 
-/**
- * Records that the user's own gesture, a click on a workspace card, put
- * keyboard focus on the sidebar workspace list.
- *
- * Why this exists: a terminal pane focuses itself when it is created or
- * activated, and a workspace that has never been opened this session mounts its
- * first pane *after* the click that selected it. Without a claim, that late
- * focus yanks the caret out of the list the user just clicked, so list-scoped
- * shortcuts (Delete to move a workspace to Done) silently do nothing on a cold
- * workspace while working fine on a warm one. The claim makes the two match.
- *
- * It is deliberately not a timer: a cold PTY can take seconds to spawn, and the
- * claim has to outlive that without ever outliving the user's focus.
- */
+// Cold panes can mount seconds after a card click; preserve list focus until it actually leaves.
 export function claimSidebarListFocus(): void {
-  claimed = true
+  releaseSidebarListFocus()
+  const active = typeof document === 'undefined' ? null : document.activeElement
+  if (active instanceof HTMLElement && active.matches(SIDEBAR_LIST_SELECTOR)) {
+    claimedList = active
+    active.addEventListener('focusout', releaseSidebarListFocus, { once: true })
+  }
 }
 
 export function releaseSidebarListFocus(): void {
-  claimed = false
+  claimedList?.removeEventListener('focusout', releaseSidebarListFocus)
+  claimedList = null
 }
 
-/**
- * True only while a claim is live *and* the list still holds focus. Any focus
- * move off the list (clicking into a terminal, opening a dialog, Enter to dive
- * into the pane) retires the claim on the next read, so nothing has to remember
- * to release it.
- */
+// Also clear disconnected lists, which may not receive focusout when removed.
 export function sidebarListFocusIsClaimed(): boolean {
-  if (!claimed) {
+  if (!claimedList) {
     return false
   }
   const active = typeof document === 'undefined' ? null : document.activeElement
-  if (active instanceof HTMLElement && active.matches(SIDEBAR_LIST_SELECTOR)) {
+  if (active === claimedList) {
     return true
   }
-  claimed = false
+  releaseSidebarListFocus()
   return false
 }

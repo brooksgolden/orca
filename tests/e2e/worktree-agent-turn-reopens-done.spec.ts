@@ -5,6 +5,7 @@
 import type { Page } from '@stablyai/playwright-test'
 import { test, expect } from './helpers/orca-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
+import { worktreeRow } from './worktree-row-locators'
 
 type Scenario = { worktreeId: string; paneKey: string }
 
@@ -15,6 +16,7 @@ async function seedDoneWorkspaceWithTab(page: Page): Promise<Scenario> {
       throw new Error('window.__store is not available')
     }
     const state = store.getState()
+    state.setGroupBy('workspace-status')
     const worktree = Object.values(state.worktreesByRepo)
       .flat()
       .find((candidate) => !candidate.isArchived)
@@ -86,6 +88,11 @@ test.describe('an agent turn reopens a Done workspace', () => {
         message: 'A fresh agent turn did not move the Done workspace back to In progress'
       })
       .toBe('in-progress')
+    await expect(
+      worktreeRow(orcaPage, scenario.worktreeId).locator(
+        'xpath=ancestor::*[@data-workspace-status][1]'
+      )
+    ).toHaveAttribute('data-workspace-status', 'in-progress')
 
     const reopened = await readWorkspace(orcaPage, scenario.worktreeId)
     expect(reopened.lastActivityAt ?? 0).toBeGreaterThan(1)
@@ -111,5 +118,10 @@ test.describe('an agent turn reopens a Done workspace', () => {
 
     await orcaPage.waitForTimeout(1_000)
     expect((await readWorkspace(orcaPage, scenario.worktreeId)).status).toBe('completed')
+    await expect(
+      worktreeRow(orcaPage, scenario.worktreeId).locator(
+        'xpath=ancestor::*[@data-workspace-status][1]'
+      )
+    ).toHaveAttribute('data-workspace-status', 'completed')
   })
 })

@@ -8,6 +8,7 @@ import type { FolderWorkspace } from '../../../../../../shared/folder-workspace-
 import type { ProjectGroup } from '../../../../../../shared/project-group-types'
 import type { Repo } from '../../../../../../shared/repo-types'
 import type { ExecutionHostId } from '../../../../../../shared/execution-host'
+import { buildWorktreeComparator } from '../../smart-sort'
 
 const GROUP: ProjectGroup = {
   id: 'group-1',
@@ -50,6 +51,7 @@ function buildSidebarRows(options: {
   projectGroups?: readonly ProjectGroup[]
   worktrees?: (typeof worktree)[]
   collapsedGroups?: Set<string>
+  doneLaneComparator?: Parameters<typeof buildRows>[22]
 }): Row[] {
   const worktrees = options.worktrees ?? [worktree]
   return buildRows(
@@ -71,7 +73,11 @@ function buildSidebarRows(options: {
     new Map(),
     [],
     undefined,
-    options.folderWorkspaces ?? [makeFolderWorkspace()]
+    options.folderWorkspaces ?? [makeFolderWorkspace()],
+    undefined,
+    undefined,
+    undefined,
+    options.doneLaneComparator
   )
 }
 
@@ -82,6 +88,37 @@ function folderRows(rows: Row[]): Extract<Row, { type: 'folder-workspace' }>[] {
 }
 
 const ALL_GROUP_BY: WorktreeGroupBy[] = ['repo', 'workspace-status', 'pr-status', 'none']
+
+it('interleaves Done folders and Git worktrees by activity instead of manual order', () => {
+  const rows = buildSidebarRows({
+    groupBy: 'workspace-status',
+    worktrees: [{ ...worktree, workspaceStatus: 'completed', lastActivityAt: 20 }],
+    folderWorkspaces: [
+      makeFolderWorkspace({
+        id: 'old',
+        workspaceStatus: 'completed',
+        lastActivityAt: 10,
+        sortOrder: 100
+      }),
+      makeFolderWorkspace({
+        id: 'recent',
+        workspaceStatus: 'completed',
+        lastActivityAt: 30,
+        sortOrder: 0
+      })
+    ],
+    doneLaneComparator: buildWorktreeComparator('recent', new Map(), Date.now(), new Map())
+  })
+  expect(
+    rows.flatMap((row) =>
+      row.type === 'item'
+        ? [row.worktree.id]
+        : row.type === 'folder-workspace'
+          ? [row.folderWorkspace.id]
+          : []
+    )
+  ).toEqual(['recent', worktree.id, 'old'])
+})
 
 describe('folder workspaces render under every Group by mode', () => {
   // The three non-repo arms are the acceptance evidence; the repo arm is a

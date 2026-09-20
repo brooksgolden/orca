@@ -160,6 +160,7 @@ const WorktreeList = React.memo(function WorktreeList({
     filterRepoIds: filterState.filterRepoIds
   })
   const rowModel = useSidebarSectionRows({
+    sortBy,
     groupBy,
     projectOrderBy,
     pinnedDisplayPolicy,

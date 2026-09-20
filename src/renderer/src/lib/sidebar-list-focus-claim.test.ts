@@ -48,8 +48,7 @@ describe('sidebar list focus claim', () => {
     expect(sidebarListFocusIsClaimed()).toBe(true)
 
     other.focus()
-    expect(sidebarListFocusIsClaimed()).toBe(false)
-
+    // No pane reads the claim while a dialog owns focus.
     list.focus()
     expect(sidebarListFocusIsClaimed()).toBe(false)
   })

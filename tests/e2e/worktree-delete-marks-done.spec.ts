@@ -22,7 +22,12 @@ async function seedInProgressWorkspace(page: Page): Promise<string> {
 
     const worktree = Object.values(state.worktreesByRepo)
       .flat()
-      .find((candidate) => !candidate.isArchived)
+      .find(
+        (candidate) =>
+          !candidate.isArchived &&
+          candidate.id !== state.activeWorktreeId &&
+          !state.tabsByWorktree[candidate.id]?.length
+      )
     if (!worktree) {
       throw new Error('Delete-to-Done E2E needs at least one worktree')
     }
@@ -71,6 +76,7 @@ test.describe('Delete marks the selected workspace Done', () => {
 
     await expect(worktreeRow(orcaPage, worktreeId)).toBeVisible()
     await worktreeRowSurface(orcaPage, worktreeId).click()
+    await expect(orcaPage.locator('.xterm:visible')).toHaveCount(1, { timeout: 30_000 })
 
     await expect
       .poll(() => sidebarListHasFocus(orcaPage), {
@@ -95,6 +101,9 @@ test.describe('Delete marks the selected workspace Done', () => {
         message: 'Delete did not move the selected In progress workspace to Done'
       })
       .toBe('completed')
+    await expect(
+      worktreeRow(orcaPage, worktreeId).locator('xpath=ancestor::*[@data-workspace-status][1]')
+    ).toHaveAttribute('data-workspace-status', 'completed')
   })
 
   test('Delete is inert once the workspace is already Done', async ({ orcaPage }) => {

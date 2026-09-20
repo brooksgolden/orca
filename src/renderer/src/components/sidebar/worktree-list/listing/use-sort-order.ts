@@ -135,8 +135,18 @@ export function useSidebarWorktreeSortOrder(args: {
       ) {
         detectedLiveSmartSignal = true
       } else {
+        const persistedComparator = (a: Worktree, b: Worktree): number =>
+          b.sortOrder - a.sortOrder || compareWorktreeSortLabel(a, b, labels)
         nonArchivedWorktrees.sort(
-          (a, b) => b.sortOrder - a.sortOrder || compareWorktreeSortLabel(a, b, labels)
+          groupBy === 'workspace-status'
+            ? buildStatusGroupedSmartComparator(
+                persistedComparator,
+                now,
+                workspaceStatuses,
+                new Map<string, WorktreeAttention>(),
+                labels
+              )
+            : persistedComparator
         )
         return {
           sortedIds: nonArchivedWorktrees.map((w) => w.id),
