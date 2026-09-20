@@ -17,6 +17,7 @@ vi.mock('../transport/host-client-hooks', () => ({
   useRefreshHostClient: () => () => {}
 }))
 
+import { MobileWebBundleRouteSchema } from '../../../src/shared/mobile-web-bundle/manifest-contract'
 import { RpcClientProvider } from '../transport/client-context.web'
 import {
   createFakeBridgePortPair,
@@ -25,8 +26,8 @@ import {
 import { useBrowserBinaryScreencastGrant } from './use-browser-binary-screencast-grant.web'
 import { useBrowserBinaryScreencastGrant as useBrowserBinaryScreencastGrantNatively } from './use-browser-binary-screencast-grant'
 
-/** The placeholder C6.1 will replace, restated here so a rename has to change both. */
-const GRANT = 'browser.screencast.binary'
+/** C6.1's name, restated here so a rename has to change both sides of the seam. */
+const GRANT = 'screencastBinary'
 
 const held: { granted: boolean | null } = { granted: null }
 
@@ -73,5 +74,17 @@ describe('the binary screencast grant on the web', () => {
 
   it('is unconditional on native, where the socket carries the frame itself', () => {
     expect(useBrowserBinaryScreencastGrantNatively()).toBe(true)
+  })
+
+  // Checked against the contract rather than by eye: a route naming a grant the manifest refuses
+  // never reaches a shell at all, so the pane would take its error branch for a reason no screen
+  // could report. The dotted spelling this name nearly had is the case that fails.
+  it('is a name the bundle manifest will carry', () => {
+    const route = (grant: string) => ({ pathname: '/h/[hostId]/session/[id]', grants: [grant] })
+
+    expect(MobileWebBundleRouteSchema.safeParse(route(GRANT)).success).toBe(true)
+    expect(MobileWebBundleRouteSchema.safeParse(route('browser.screencast.binary')).success).toBe(
+      false
+    )
   })
 })
