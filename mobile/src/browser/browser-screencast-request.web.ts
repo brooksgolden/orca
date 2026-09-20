@@ -1,5 +1,6 @@
 import { BRIDGE_MAX_MESSAGE_BYTES } from '../mobile-web-shell/bridge/bridge-caps'
 import { BRIDGE_PROTOCOL_VERSION } from '../mobile-web-shell/bridge/bridge-envelope'
+import { METADATA_KEYS } from '../transport/browser-screencast-protocol'
 import {
   assembleMobileBrowserScreencastRequest,
   MOBILE_VIEW_DEVICE_SCALE_FACTOR,
@@ -28,17 +29,44 @@ export const WORST_CASE_JPEG_BYTES_PER_PIXEL = 0.545
 /** Base64 carries three bytes in four characters, and a character is one UTF-8 byte here. */
 export const BASE64_BYTES_PER_CHARACTER = 3 / 4
 
+/** The characters base64 spends on `byteLength` bytes, padded up to a whole group as it always is. */
+export function base64Characters(byteLength: number): number {
+  return 4 * Math.ceil(byteLength / 3)
+}
+
 /**
- * What the frame's envelope costs, derived rather than typed, so the budget cannot drift from the
- * shape the shell actually sends.
+ * The widest `JSON.stringify` of a finite double.
+ *
+ * Sign, `0.`, the five zeros fixed notation writes just above 1e-6, and seventeen significant
+ * digits: `-0.0000012345678901234567`. Exponential form is one character shorter, because ToString
+ * only leaves fixed notation below 1e-6, so this covers both.
+ *
+ * It has to be an upper bound rather than a plausible width. The budget's entire margin is what
+ * this over-estimates by, so a metadata field wider than assumed is a frame over the cap.
+ */
+const WIDEST_JSON_DOUBLE_CHARS = 25
+
+/** `JSON.stringify(0)`, which is what the skeleton below spends per metadata field before widening. */
+const NARROWEST_JSON_DOUBLE_CHARS = 1
+
+/**
+ * An upper bound on what the frame's envelope costs, derived rather than typed, so the budget
+ * cannot drift from the shape the shell actually sends.
  *
  * Everything but the image at its widest: a full-length correlation id, both sequence counters at
- * the largest integer they can hold, and every metadata field present carrying a wide fraction.
- * A real frame's envelope is smaller, which leaves the budget conservative in the safe direction.
+ * the largest integer they can hold, and every named metadata field present and as wide as a double
+ * can print. The field list comes from the protocol module rather than a copy of it, so a tenth
+ * field cannot be added to frames without being paid for here.
+ *
+ * Two things it does not cover, both of them C6 ruling 1's to drop rather than this budget's to
+ * predict: the metadata object is a loose one, so a shell may send keys this list has never heard
+ * of, and web view mode's frame is a letterboxed desktop viewport the page cannot size.
+ *
+ * Pinning this against C6.1's real encoder belongs to C6.5, once the encoder and this are both on
+ * main; until then the bound is checked against a serialized envelope of the same shape.
  */
 export function binaryEventEnvelopeBytes(): number {
-  const widestNumber = -1_234_567.890_123_4
-  return JSON.stringify({
+  const skeleton = JSON.stringify({
     v: BRIDGE_PROTOCOL_VERSION,
     type: 'event',
     id: 'a'.repeat(22),
@@ -47,19 +75,10 @@ export function binaryEventEnvelopeBytes(): number {
       b64: '',
       format: 'jpeg',
       frameSeq: Number.MAX_SAFE_INTEGER,
-      metadata: {
-        offsetTop: widestNumber,
-        pageScaleFactor: widestNumber,
-        deviceWidth: widestNumber,
-        deviceHeight: widestNumber,
-        imageWidth: widestNumber,
-        imageHeight: widestNumber,
-        scrollOffsetX: widestNumber,
-        scrollOffsetY: widestNumber,
-        timestamp: widestNumber
-      }
+      metadata: Object.fromEntries(METADATA_KEYS.map((key) => [key, 0]))
     }
   }).length
+  return skeleton + METADATA_KEYS.length * (WIDEST_JSON_DOUBLE_CHARS - NARROWEST_JSON_DOUBLE_CHARS)
 }
 
 /**
@@ -71,8 +90,10 @@ export function binaryEventEnvelopeBytes(): number {
  * goes dark on a page it could have streamed.
  */
 export function mobileBrowserFrameAreaBudget(): number {
-  const base64Characters = BRIDGE_MAX_MESSAGE_BYTES - binaryEventEnvelopeBytes()
-  const imageBytes = Math.floor(base64Characters * BASE64_BYTES_PER_CHARACTER)
+  const available = BRIDGE_MAX_MESSAGE_BYTES - binaryEventEnvelopeBytes()
+  // Whole base64 groups, not three quarters of the room: an image of 3k+1 bytes costs two
+  // characters more than the ratio says, which at a margin this tight is a dropped frame.
+  const imageBytes = Math.floor(available / 4) * 3
   return Math.floor(imageBytes / WORST_CASE_JPEG_BYTES_PER_PIXEL)
 }
 

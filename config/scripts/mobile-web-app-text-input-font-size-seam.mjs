@@ -8,7 +8,7 @@
  * A rule per route closure rather than per known site: the first fix covered two inputs and eight
  * others in the same closures still carried the old size.
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import ts from 'typescript-api'
 
@@ -121,6 +121,60 @@ function styleExpressions(expression) {
     return []
   }
   return [expression]
+}
+
+/**
+ * Every non-test module under `directory` that renders a `TextInput`, as paths under `mobileDir`.
+ *
+ * Exported so a hand-written closure can state what it claims to cover and be held to it: an
+ * offender list over a list somebody typed proves the walk read those files, not that they are the
+ * screen's set. Uses the same JSX tag rule the walk below does, rather than a text search that
+ * would count an import or a comment.
+ */
+export function modulesDeclaringTextInput(mobileDir, directory) {
+  const found = []
+  const walk = (relativeDirectory) => {
+    const absolute = join(mobileDir, relativeDirectory)
+    if (!existsSync(absolute)) {
+      return
+    }
+    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+      const child = `${relativeDirectory}/${entry.name}`
+      if (entry.isDirectory()) {
+        walk(child)
+        continue
+      }
+      if (!/\.(tsx|ts)$/.test(entry.name) || /\.test\.(tsx|ts)$/.test(entry.name)) {
+        continue
+      }
+      const source = readOrNull(join(mobileDir, child))
+      if (source !== null && declaresTextInput(parse(child, source))) {
+        found.push(child)
+      }
+    }
+  }
+  walk(directory)
+  return found.sort()
+}
+
+/** Whether a parsed module renders a `TextInput` element, by tag rather than by mention. */
+function declaresTextInput(parsed) {
+  let found = false
+  const visit = (node) => {
+    if (found) {
+      return
+    }
+    if (
+      (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) &&
+      node.tagName.getText() === 'TextInput'
+    ) {
+      found = true
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  ts.forEachChild(parsed, visit)
+  return found
 }
 
 /**
