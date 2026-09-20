@@ -47,6 +47,7 @@ export type BridgeDroppedBinaryFrame = {
  */
 export class BridgeHostSubscriptions {
   private readonly open = new Map<string, OpenSubscription>()
+  private droppedTotal = 0
 
   constructor(
     private readonly options: {
@@ -72,8 +73,6 @@ export class BridgeHostSubscriptions {
   get droppedBinaryFrames(): number {
     return this.droppedTotal
   }
-
-  private droppedTotal = 0
 
   has(id: string): boolean {
     return this.open.has(id)
