@@ -139,6 +139,37 @@ describe('remote sibling editor content routing', () => {
     )
   })
 
+  it('reads a local sibling file without moving its tab to the owning workspace', async () => {
+    const activeFile = createOpenFile({
+      id: '/repo-b/docs/readme.md',
+      filePath: '/repo-b/docs/readme.md',
+      relativePath: '/repo-b/docs/readme.md',
+      worktreeId: 'repo-a::/repo-a',
+      runtimeEnvironmentId: null
+    })
+    mocks.getState.mockReturnValue({
+      settings: { activeRuntimeEnvironmentId: null },
+      openFiles: [activeFile],
+      setLastKnownDiskSignature: vi.fn()
+    })
+    mocks.readRuntimeFileContent.mockResolvedValue({ content: '# Notes', isBinary: false })
+    mocks.findWorkspaceFileRoute.mockReturnValue({
+      worktreeId: 'repo-b::/repo-b',
+      relativePath: 'docs/readme.md',
+      executionHostId: 'local'
+    })
+
+    await act(async () => root?.render(<HookProbe activeFile={activeFile} />))
+
+    await vi.waitFor(() => expect(latestFileContents[activeFile.id]?.content).toBe('# Notes'))
+    expect(mocks.findWorkspaceFileRoute).not.toHaveBeenCalled()
+    expect(mocks.migrateRestoredEditorFileOwner).not.toHaveBeenCalled()
+    expect(authorizeExternalPath).toHaveBeenCalledWith({ targetPath: activeFile.filePath })
+    expect(mocks.readRuntimeFileContent).toHaveBeenCalledWith(
+      expect.objectContaining({ worktreeId: activeFile.worktreeId, filePath: activeFile.filePath })
+    )
+  })
+
   it('atomically reparents an unstamped sibling file before reading', async () => {
     const activeFile = createOpenFile({
       id: '/work/repo-b/docs/readme.md',

@@ -127,7 +127,12 @@ export function useEditorPanelFileContentLoader({
               : runtimeEnvironmentId
                 ? toRuntimeExecutionHostId(runtimeEnvironmentId)
                 : LOCAL_EXECUTION_HOST_ID
-            const route = findWorkspaceFileRoute(currentState, executionHostId, filePath)
+            // Local file links can stay in the workspace where they were clicked.
+            // Remote reads still need the sibling workspace that owns the path.
+            const route =
+              executionHostId === LOCAL_EXECUTION_HOST_ID
+                ? null
+                : findWorkspaceFileRoute(currentState, executionHostId, filePath)
             if (route && route.worktreeId !== worktreeId) {
               const migration = await migrateRestoredEditorFileOwner(
                 id,

@@ -202,7 +202,7 @@ test('opens a terminal file link and observes an external edit @golden', async (
   }
 })
 
-test('reuses a terminal file link already open in a sibling workspace @golden', async ({
+test('opens a linked local file in the current workspace even when a sibling has it open @golden', async ({
   orcaPage
 }) => {
   test.setTimeout(180_000)
@@ -304,8 +304,8 @@ test('reuses a terminal file link already open in a sibling workspace @golden', 
           activeWorktreeId: rendered.activeWorktreeId
         }
       },
-      { timeout: 20_000, message: 'sibling workspace never rendered the linked file' }
+      { timeout: 20_000, message: 'current workspace never rendered the linked file' }
     )
-    .toEqual({ filePath: canonicalFileIdentity(filePath), activeWorktreeId: sibling.id })
+    .toEqual({ filePath: canonicalFileIdentity(filePath), activeWorktreeId: sourceWorktreeId })
   await expect(orcaPage.getByText('Loading...', { exact: true })).toHaveCount(0)
 })

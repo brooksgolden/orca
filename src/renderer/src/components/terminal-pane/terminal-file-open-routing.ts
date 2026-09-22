@@ -224,6 +224,7 @@ export function openDetectedFilePath(
         relativePath = maybeRelative
       }
     } else if (
+      (fileContext.connectionId || fileContext.settings?.activeRuntimeEnvironmentId?.trim()) &&
       store.openFiles.some(
         (openFile) => openFile.filePath === mappedFilePath && openFile.worktreeId !== worktreeId
       )
