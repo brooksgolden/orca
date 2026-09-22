@@ -133,6 +133,16 @@ export function getExternalAutomationLastRunSnapshot(
       statusLabel: translate('auto.components.automations.automation.list.last.run.done', 'Done')
     }
   }
+  if (normalized === 'running') {
+    return {
+      at,
+      tone: 'running',
+      statusLabel: translate(
+        'auto.components.automations.automation.list.last.run.running',
+        'Running'
+      )
+    }
+  }
   if (EXTERNAL_FAILED_STATUSES.has(normalized) || Boolean(job.lastError)) {
     return {
       at,

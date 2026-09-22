@@ -137,6 +137,11 @@ describe('automation-list-last-run', () => {
       )
     ).toMatchObject({ tone: 'succeeded', statusLabel: 'Done' })
     expect(
+      getExternalAutomationLastRunSnapshot(
+        makeJob({ lastRunAt: '2026-08-12T01:00:00Z', lastStatus: 'running' })
+      )
+    ).toMatchObject({ tone: 'running', statusLabel: 'Running' })
+    expect(
       getExternalAutomationLastRunSnapshot(makeJob({ lastError: 'boom', lastStatus: null }))
     ).toMatchObject({ tone: 'failed', statusLabel: 'Failed' })
     expect(

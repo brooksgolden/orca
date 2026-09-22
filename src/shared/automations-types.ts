@@ -276,6 +276,10 @@ export type ExternalAutomationJob = {
   runCount: number
   runCountSaturated?: true
   runs: ExternalAutomationRun[]
+  /** False for discovered long-running services that Orca may observe but not mutate. */
+  manageable?: boolean
+  /** True when the automation is a continuously supervised service rather than a schedule. */
+  continuous?: boolean
 }
 
 export type ExternalAutomationRun = {

@@ -82,6 +82,7 @@ export function AutomationListExternalRow({
       : undefined
   const disabledMessage = getExternalAutomationActionDisabledMessage({
     manager: entry.manager,
+    job: entry.job,
     providerLabel,
     targetKindLabel,
     sshStatus,
@@ -91,9 +92,11 @@ export function AutomationListExternalRow({
   const scheduleLabel = getExternalAutomationScheduleDisplay(entry.manager, entry.job).label
   const hostLabel = entry.manager.targetLabel || entry.manager.label || 'Local'
   const projectLabel = entry.job.workdir ?? providerLabel
-  const nextRunLabel = entry.job.enabled
-    ? formatExternalDate(entry.job.nextRunAt, relativeNow)
-    : translate('auto.components.automations.AutomationsPage.paused', 'Paused')
+  const nextRunLabel = entry.job.continuous
+    ? translate('auto.components.automations.AutomationsPage.continuous', 'Continuous')
+    : entry.job.enabled
+      ? formatExternalDate(entry.job.nextRunAt, relativeNow)
+      : translate('auto.components.automations.AutomationsPage.paused', 'Paused')
   const lastRunSnapshot = getExternalAutomationLastRunSnapshot(entry.job)
 
   return (
@@ -140,7 +143,21 @@ export function AutomationListExternalRow({
             {nextRunLabel}
           </span>
           <AutomationListLastRunCell snapshot={lastRunSnapshot} now={relativeNow} />
-          <AutomationListStatusCell enabled={entry.job.enabled} />
+          <AutomationListStatusCell
+            enabled={entry.job.enabled}
+            enabledLabel={
+              entry.job.continuous
+                ? translate('auto.components.automations.AutomationsPage.running', 'Running')
+                : undefined
+            }
+            disabledLabel={
+              entry.job.continuous
+                ? entry.job.state === 'failed'
+                  ? translate('auto.components.automations.AutomationsPage.failed', 'Failed')
+                  : translate('auto.components.automations.AutomationsPage.stopped', 'Stopped')
+                : undefined
+            }
+          />
           <span className="truncate text-center text-xs text-muted-foreground">
             {providerLabel}
           </span>
@@ -173,7 +190,7 @@ export function AutomationListExternalRow({
               </DropdownMenuItem>
               {entry.manager.provider === 'hermes' ? (
                 <DropdownMenuItem
-                  disabled={!entry.manager.canManage || externalActionKey !== null}
+                  disabled={actionDisabled}
                   onSelect={() => onEdit(entry.manager, entry.job, entry.scope)}
                 >
                   <Pencil className="size-3.5" />
@@ -222,7 +239,7 @@ export function AutomationListExternalRow({
         </ContextMenuItem>
         {entry.manager.provider === 'hermes' ? (
           <ContextMenuItem
-            disabled={!entry.manager.canManage || externalActionKey !== null}
+            disabled={actionDisabled}
             onSelect={() => onEdit(entry.manager, entry.job, entry.scope)}
           >
             <Pencil className="size-3.5" />

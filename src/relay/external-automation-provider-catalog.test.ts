@@ -46,6 +46,60 @@ describe('ExternalAutomationProviderCatalog', () => {
     })
   })
 
+  it('discovers continuously running Hermes systemd services', async () => {
+    await writeFile(
+      join(hermesHome, 'services.json'),
+      JSON.stringify({
+        services: [
+          {
+            id: 'tradepilot-hermes-bot',
+            name: 'TradePilot Hermes bot',
+            units: ['tradepilot-meta-webhook.service', 'tradepilot-meta-draft-worker.service'],
+            workdir: '/home/hermes/.hermes/skills/tradepilot-dm-setter'
+          }
+        ]
+      }),
+      'utf-8'
+    )
+    const runCommand = vi.fn(async (command: string, args: string[]) => {
+      if (command === 'systemctl') {
+        return {
+          stdout: [
+            `Id=${args[1]}`,
+            'LoadState=loaded',
+            'ActiveState=active',
+            'SubState=running',
+            'ActiveEnterTimestamp=2026-09-21T12:00:00Z'
+          ].join('\n')
+        }
+      }
+      return undefined
+    })
+    const { ExternalAutomationProviderCatalog } =
+      await import('./external-automation-provider-catalog')
+    const catalog = new ExternalAutomationProviderCatalog(runCommand, vi.fn())
+
+    const result = await catalog.listJobs({ provider: 'hermes' })
+
+    expect(result.jobs).toEqual([
+      expect.objectContaining({
+        id: 'service:tradepilot-hermes-bot',
+        name: 'TradePilot Hermes bot',
+        schedule_display: 'Always on',
+        enabled: true,
+        state: 'running',
+        last_status: 'running',
+        manageable: false,
+        continuous: true
+      })
+    ])
+    expect(runCommand).toHaveBeenCalledWith(
+      'systemctl',
+      expect.arrayContaining(['show', 'tradepilot-meta-webhook.service']),
+      { encoding: 'utf-8', timeout: 5000 }
+    )
+  })
+
   it('projects jobs-file parse failures without hiding command availability', async () => {
     await writeFile(join(hermesHome, 'cron', 'jobs.json'), '{not-json', 'utf-8')
     const { ExternalAutomationProviderCatalog } =

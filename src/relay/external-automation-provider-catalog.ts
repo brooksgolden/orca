@@ -6,6 +6,7 @@ import {
   type ExternalAutomationProvider
 } from './external-automation-provider'
 import type { ExternalAutomationCommandRunner } from './external-automation-command-executor'
+import { readHermesServiceJobs } from './hermes-service-catalog'
 
 type HermesRunLister = (params: Record<string, unknown>) => Promise<{
   total: number
@@ -58,36 +59,38 @@ export class ExternalAutomationProviderCatalog {
 
   private async readJobs(provider: ExternalAutomationProvider): Promise<unknown[]> {
     const jobsFile = provider === 'hermes' ? HERMES_JOBS_FILE : OPENCLAW_JOBS_FILE
-    if (!existsSync(jobsFile)) {
-      return []
-    }
-    const content = await readFile(jobsFile, 'utf-8')
-    const parsed = JSON.parse(content) as unknown
-    const jobs = Array.isArray(parsed)
+    const parsed: unknown = existsSync(jobsFile)
+      ? JSON.parse(await readFile(jobsFile, 'utf-8'))
+      : []
+    const parsedJobs = Array.isArray(parsed)
       ? parsed
       : isRecord(parsed) && Array.isArray(parsed.jobs)
         ? parsed.jobs
         : []
     if (provider !== 'hermes') {
-      return jobs
+      return parsedJobs
     }
-    return Promise.all(
-      jobs.map(async (job) => {
-        if (!isRecord(job) || typeof job.id !== 'string') {
-          return job
-        }
-        const runsPage = await this.listRuns({
-          provider: 'hermes',
-          jobId: job.id,
-          page: 1,
-          pageSize: 0
+    const [cronJobs, serviceJobs] = await Promise.all([
+      Promise.all(
+        parsedJobs.map(async (job) => {
+          if (!isRecord(job) || typeof job.id !== 'string') {
+            return job
+          }
+          const runsPage = await this.listRuns({
+            provider: 'hermes',
+            jobId: job.id,
+            page: 1,
+            pageSize: 0
+          })
+          return {
+            ...job,
+            run_count: runsPage.total,
+            runs: runsPage.runs
+          }
         })
-        return {
-          ...job,
-          run_count: runsPage.total,
-          runs: runsPage.runs
-        }
-      })
-    )
+      ),
+      readHermesServiceJobs(this.runCommand)
+    ])
+    return [...cronJobs, ...serviceJobs]
   }
 }

@@ -159,6 +159,7 @@ export function ExternalAutomationManagers({
                 const scheduleDisplay = getExternalAutomationScheduleDisplay(manager, job)
                 const disabledMessage = getExternalAutomationActionDisabledMessage({
                   manager,
+                  job,
                   actionInProgress: runningActionKey !== null
                 })
                 // Scope-qualified so two hosts running the same provider cannot
@@ -178,15 +179,30 @@ export function ExternalAutomationManagers({
                           {job.name}
                         </span>
                         <Badge variant={job.enabled ? 'secondary' : 'outline'}>
-                          {job.enabled
+                          {job.continuous && job.enabled
                             ? translate(
-                                'auto.components.automations.ExternalAutomationManagers.b3feba84c7',
-                                'Active'
+                                'auto.components.automations.ExternalAutomationManagers.running',
+                                'Running'
                               )
-                            : translate(
-                                'auto.components.automations.ExternalAutomationManagers.2b0adbce21',
-                                'Paused'
-                              )}
+                            : job.continuous && job.state === 'failed'
+                              ? translate(
+                                  'auto.components.automations.ExternalAutomationManagers.failed',
+                                  'Failed'
+                                )
+                              : job.continuous
+                                ? translate(
+                                    'auto.components.automations.ExternalAutomationManagers.stopped',
+                                    'Stopped'
+                                  )
+                                : job.enabled
+                                  ? translate(
+                                      'auto.components.automations.ExternalAutomationManagers.b3feba84c7',
+                                      'Active'
+                                    )
+                                  : translate(
+                                      'auto.components.automations.ExternalAutomationManagers.2b0adbce21',
+                                      'Paused'
+                                    )}
                         </Badge>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -231,10 +247,15 @@ export function ExternalAutomationManagers({
                           'auto.components.automations.ExternalAutomationManagers.20fd7a3a15',
                           'next'
                         )}{' '}
-                        {formatExternalDate(job.nextRunAt, now)} ·{' '}
-                        {getExternalProviderLabel(manager)} / {manager.targetLabel}
+                        {job.continuous
+                          ? translate(
+                              'auto.components.automations.ExternalAutomationManagers.continuous',
+                              'Continuous'
+                            )
+                          : formatExternalDate(job.nextRunAt, now)}{' '}
+                        · {getExternalProviderLabel(manager)} / {manager.targetLabel}
                       </div>
-                      {manager.provider === 'hermes' ? (
+                      {manager.provider === 'hermes' && !job.continuous ? (
                         <div className="mt-1 truncate text-xs text-muted-foreground">
                           {job.runCount}{' '}
                           {job.runCount === 1
@@ -318,7 +339,7 @@ export function ExternalAutomationManagers({
                         )}
                       </ExternalActionButton>
                     </div>
-                    {manager.provider === 'hermes' ? (
+                    {manager.provider === 'hermes' && !job.continuous ? (
                       <div className="col-span-3">
                         <ExternalAutomationRunTable
                           scope={scope}

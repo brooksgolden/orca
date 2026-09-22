@@ -200,6 +200,8 @@ export function mapHermesJobs(managerId: string, rawJobs: unknown): ExternalAuto
       lastError: asString(job.last_error) ?? asString(job.last_delivery_error),
       workdir: asString(job.workdir),
       runCount: asNumber(job.run_count) ?? (Array.isArray(job.runs) ? job.runs.length : 0),
+      ...(job.manageable === false ? { manageable: false } : {}),
+      ...(job.continuous === true ? { continuous: true } : {}),
       runs: mapExternalRuns({
         managerId,
         provider: 'hermes',

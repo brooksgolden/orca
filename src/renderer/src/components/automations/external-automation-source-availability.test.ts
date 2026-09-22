@@ -18,6 +18,35 @@ function manager(overrides: Partial<ExternalAutomationManager> = {}): ExternalAu
 }
 
 describe('external automation action availability', () => {
+  it('keeps systemd-managed services read-only', () => {
+    expect(
+      getExternalAutomationActionDisabledMessage({
+        manager: manager({ canManage: true }),
+        job: {
+          id: 'service:tradepilot-hermes-bot',
+          managerId: 'hermes:ssh:hostinger',
+          provider: 'hermes',
+          name: 'TradePilot Hermes bot',
+          schedule: 'Always on',
+          rawSchedule: null,
+          enabled: true,
+          state: 'running',
+          prompt: null,
+          promptPreview: '',
+          nextRunAt: null,
+          lastRunAt: null,
+          lastStatus: 'running',
+          lastError: null,
+          workdir: null,
+          runCount: 0,
+          runs: [],
+          manageable: false,
+          continuous: true
+        }
+      })
+    ).toBe('This service is managed by systemd on the host.')
+  })
+
   it('explains disabled local automation actions when the source tool is missing', () => {
     expect(
       getExternalAutomationActionDisabledMessage({

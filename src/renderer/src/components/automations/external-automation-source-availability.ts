@@ -1,4 +1,5 @@
 import type {
+  ExternalAutomationJob,
   ExternalAutomationManager,
   ExternalAutomationProvider
 } from '../../../../shared/automations-types'
@@ -11,6 +12,7 @@ export function isSshConnectionBusy(status: SshConnectionStatus | undefined): bo
 
 export function getExternalAutomationActionDisabledMessage(args: {
   manager: ExternalAutomationManager
+  job?: ExternalAutomationJob
   providerLabel?: string
   targetKindLabel?: string
   sshStatus?: SshConnectionStatus
@@ -18,6 +20,9 @@ export function getExternalAutomationActionDisabledMessage(args: {
 }): string | null {
   if (args.actionInProgress) {
     return 'Another automation action is still running.'
+  }
+  if (args.job?.manageable === false) {
+    return 'This service is managed by systemd on the host.'
   }
   if (args.manager.canManage) {
     return null

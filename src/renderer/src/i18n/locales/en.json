@@ -16097,7 +16097,11 @@
           "tableLastRun": "Last run",
           "noListMatches": "No automations match.",
           "destinationProjectUnavailable": "Choose a project owned by the selected automation destination.",
-          "ownerChanged": "This automation changed hosts. Refresh and try again."
+          "ownerChanged": "This automation changed hosts. Refresh and try again.",
+          "continuous": "Continuous",
+          "running": "Running",
+          "failed": "Failed",
+          "stopped": "Stopped"
         },
         "AutomationsPageSkeleton": {
           "55527b7bcf": "Loading automations"
@@ -16135,7 +16139,11 @@
           "0a2d4359a8": "Manageable",
           "330b3c32e8": "available",
           "e2532150ed": "automations",
-          "701515f010": "automation"
+          "701515f010": "automation",
+          "running": "Running",
+          "failed": "Failed",
+          "stopped": "Stopped",
+          "continuous": "Continuous"
         },
         "ExternalAutomationRunTable": {
           "0ba9c0a95c": "Next run page",
@@ -16196,7 +16204,8 @@
             "last": {
               "run": {
                 "done": "Done",
-                "failed": "Failed"
+                "failed": "Failed",
+                "running": "Running"
               }
             }
           },

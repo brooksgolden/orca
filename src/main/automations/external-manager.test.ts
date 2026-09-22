@@ -166,6 +166,29 @@ describe('mapHermesJobs', () => {
       lastError: 'home channel missing'
     })
   })
+
+  it('marks discovered Hermes services as continuous and read-only', () => {
+    const jobs = mapHermesJobs('hermes:ssh:hostinger', [
+      {
+        id: 'service:tradepilot-hermes-bot',
+        name: 'TradePilot Hermes bot',
+        schedule_display: 'Always on',
+        enabled: true,
+        state: 'running',
+        last_status: 'running',
+        manageable: false,
+        continuous: true
+      }
+    ])
+
+    expect(jobs[0]).toMatchObject({
+      id: 'service:tradepilot-hermes-bot',
+      enabled: true,
+      state: 'running',
+      manageable: false,
+      continuous: true
+    })
+  })
 })
 
 describe('createExternalAutomation', () => {

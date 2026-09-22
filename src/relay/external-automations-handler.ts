@@ -15,7 +15,7 @@ const runExternalAutomationCommand: ExternalAutomationCommandRunner = async (
   args,
   options
 ) => {
-  await execFileAsync(command, args, options)
+  return await execFileAsync(command, args, options)
 }
 
 export class ExternalAutomationsHandler {
