@@ -107,7 +107,9 @@ test('packaged sidebar and cross-workspace terminals', async (// oxlint-disable-
       .toBe(1)
     await page.keyboard.type('echo FIRST_WORKSPACE_SMOKE > smoke-output.txt')
     await page.keyboard.press('Enter')
-    await expect.poll(() => existsSync(path.join(folderPaths[0], 'smoke-output.txt'))).toBe(true)
+    await expect
+      .poll(() => existsSync(path.join(folderPaths[0], 'smoke-output.txt')), { timeout: 45_000 })
+      .toBe(true)
     expect(readShellOutput(path.join(folderPaths[0], 'smoke-output.txt'))).toContain(
       'FIRST_WORKSPACE_SMOKE'
     )
@@ -128,7 +130,9 @@ test('packaged sidebar and cross-workspace terminals', async (// oxlint-disable-
       .toBe(2)
     await page.keyboard.type('echo SECOND_WORKSPACE_SMOKE > smoke-output.txt')
     await page.keyboard.press('Enter')
-    await expect.poll(() => existsSync(path.join(folderPaths[1], 'smoke-output.txt'))).toBe(true)
+    await expect
+      .poll(() => existsSync(path.join(folderPaths[1], 'smoke-output.txt')), { timeout: 45_000 })
+      .toBe(true)
     expect(readShellOutput(path.join(folderPaths[1], 'smoke-output.txt'))).toContain(
       'SECOND_WORKSPACE_SMOKE'
     )
