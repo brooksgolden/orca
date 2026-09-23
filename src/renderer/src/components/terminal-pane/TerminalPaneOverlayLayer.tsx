@@ -27,6 +27,7 @@ const TerminalPaneOverlayLayer = memo(function TerminalPaneOverlayLayer({
   worktreeId,
   worktreePath,
   isWorktreeActive,
+  isWorktreeFocused = isWorktreeActive,
   coldParkTerminalPanes = false,
   isForceParked = false,
   shouldMeasureHiddenWorktree = false,
@@ -37,6 +38,7 @@ const TerminalPaneOverlayLayer = memo(function TerminalPaneOverlayLayer({
   worktreeId: string
   worktreePath: string
   isWorktreeActive: boolean
+  isWorktreeFocused?: boolean
   coldParkTerminalPanes?: boolean
   /** Retention-budget force-park keeps eviction-exempt tabs mounted. */
   isForceParked?: boolean
@@ -60,7 +62,7 @@ const TerminalPaneOverlayLayer = memo(function TerminalPaneOverlayLayer({
   const setActiveWorktree = useAppStore((state) => state.setActiveWorktree)
   const reconcileWorktreeTabModel = useAppStore((state) => state.reconcileWorktreeTabModel)
 
-  useNativeChatToggleShortcut(worktreeId, isWorktreeActive)
+  useNativeChatToggleShortcut(worktreeId, isWorktreeFocused)
 
   const leaveWorktreeIfEmpty = useCallback(() => {
     const state = useAppStore.getState()
@@ -139,7 +141,9 @@ const TerminalPaneOverlayLayer = memo(function TerminalPaneOverlayLayer({
         .map((terminalTab) => {
           const assignment = assignments.get(terminalTab.id)
           const isVisible = Boolean(isWorktreeActive && assignment?.isActiveInGroup)
-          const isActive = Boolean(isVisible && assignment?.groupId === activeGroupId)
+          const isActive = Boolean(
+            isVisible && isWorktreeFocused && assignment?.groupId === activeGroupId
+          )
           const activityTerminalPortal = findActivityTerminalPortal(activityTerminalPortals, {
             worktreeId,
             tabId: terminalTab.id

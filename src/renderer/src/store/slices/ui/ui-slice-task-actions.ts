@@ -9,12 +9,52 @@ import {
 import { PER_REPO_FETCH_LIMIT } from '../../../../../shared/work-items'
 import { isGitRepoKind } from '../../../../../shared/repo-kind'
 import { presetToQuery } from './ui-slice-hydration-sanitizers'
+import {
+  placeWorkspaceAtEdge,
+  readWorkspaceSplitGroups,
+  removeWorkspaceFromSplit,
+  setWorkspaceSplitRatio,
+  writeWorkspaceSplitGroups
+} from '@/lib/workspace-split-layout'
 
 const LINEAR_TASK_PREFETCH_LIMIT = 36
 
 export function createUiTaskActions(set: UISliceSet, get: UISliceGet): Partial<UISlice> {
   return {
     activeView: 'terminal',
+    workspaceSplitGroups: readWorkspaceSplitGroups(),
+    placeWorkspaceAtEdge: (source, target, edge) =>
+      set((state) => {
+        const workspaceSplitGroups = placeWorkspaceAtEdge(
+          state.workspaceSplitGroups,
+          source,
+          target,
+          edge,
+          crypto.randomUUID()
+        )
+        writeWorkspaceSplitGroups(workspaceSplitGroups)
+        return { workspaceSplitGroups }
+      }),
+    unsplitWorkspace: (workspaceId) =>
+      set((state) => {
+        const workspaceSplitGroups = removeWorkspaceFromSplit(
+          state.workspaceSplitGroups,
+          workspaceId
+        )
+        writeWorkspaceSplitGroups(workspaceSplitGroups)
+        return { workspaceSplitGroups }
+      }),
+    setWorkspaceSplitRatio: (groupId, path, ratio) =>
+      set((state) => {
+        const workspaceSplitGroups = setWorkspaceSplitRatio(
+          state.workspaceSplitGroups,
+          groupId,
+          path,
+          ratio
+        )
+        writeWorkspaceSplitGroups(workspaceSplitGroups)
+        return { workspaceSplitGroups }
+      }),
     previousViewBeforeTasks: 'terminal',
     previousViewBeforeSettings: 'terminal',
     previousViewBeforeActivity: 'terminal',

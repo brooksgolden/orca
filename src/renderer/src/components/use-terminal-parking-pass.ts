@@ -43,6 +43,7 @@ export function useTerminalParkingPass(controller: TerminalParkingFoundation): v
     terminalSshParkingEnabled,
     workspaceSurfaceIds
   } = controller
+  const visibleWorkspaceIds = controller.visibleWorkspaceIds
 
   useEffect(() => {
     const pass = collectTerminalParkingPassCandidates(controller)
@@ -199,6 +200,7 @@ export function useTerminalParkingPass(controller: TerminalParkingFoundation): v
     pendingStartupByTabId,
     pairedRuntimeParkingEnvironmentIds,
     renderedActiveWorktreeId,
+    visibleWorkspaceIds,
     tabsByWorktree,
     terminalParkingEnabled,
     terminalParkingRevision,

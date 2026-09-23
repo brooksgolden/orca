@@ -1,4 +1,9 @@
 import type { StateCreator } from 'zustand'
+import type {
+  WorkspaceLayoutPath,
+  WorkspaceSplitEdge,
+  WorkspaceSplitGroup
+} from '@/lib/workspace-split-layout'
 import type { AppState } from '../../types'
 import type { GitHubWorkItem } from '../../../../../shared/github/work-item-types'
 import type { GitLabWorkItem } from '../../../../../shared/gitlab-types'
@@ -151,6 +156,10 @@ export type UISliceCore = {
   manuallyUnreadTurnsByPaneKey: Record<string, number>
   clearManuallyUnreadTurns: (paneKeys: string[]) => void
   activeView: TopLevelView
+  workspaceSplitGroups: WorkspaceSplitGroup[]
+  placeWorkspaceAtEdge: (source: string, target: string, edge: WorkspaceSplitEdge) => void
+  unsplitWorkspace: (workspaceId: string) => void
+  setWorkspaceSplitRatio: (groupId: string, path: WorkspaceLayoutPath, ratio: number) => void
   previousViewBeforeTasks: Exclude<UiViewHistory, 'tasks'>
   previousViewBeforeSettings: Exclude<UiViewHistory, 'settings'>
   previousViewBeforeActivity: Exclude<UiViewHistory, 'activity'>

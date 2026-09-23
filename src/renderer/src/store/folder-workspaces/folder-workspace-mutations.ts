@@ -261,6 +261,7 @@ export function createFolderWorkspaceMutationActions(
           // tear down Chromium guests before purging the remaining renderer state.
           await get().shutdownWorktreeBrowsers(workspaceKey)
           get().purgeWorktreeTerminalState([workspaceKey])
+          get().unsplitWorkspace(workspaceKey)
         }
         return true
       } catch (err) {

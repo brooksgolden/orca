@@ -147,6 +147,7 @@ function SplitNode({
   worktreeId,
   focusedGroupId,
   isWorktreeActive,
+  isWorktreeFocused,
   hasSplitGroups,
   touchesTopEdge,
   touchesRightEdge,
@@ -163,6 +164,7 @@ function SplitNode({
   worktreeId: string
   focusedGroupId?: string
   isWorktreeActive: boolean
+  isWorktreeFocused: boolean
   hasSplitGroups: boolean
   touchesTopEdge: boolean
   touchesRightEdge: boolean
@@ -187,7 +189,7 @@ function SplitNode({
         // survive worktree switches, but only the visible worktree may own the
         // global terminal shortcuts. If an offscreen group's pane stays
         // "focused", Cmd/Ctrl+W and split shortcuts can hit the wrong worktree.
-        isFocused={isWorktreeActive && node.groupId === focusedGroupId}
+        isFocused={isWorktreeFocused && node.groupId === focusedGroupId}
         hasSplitGroups={hasSplitGroups}
         touchesRightEdge={touchesRightEdge}
         touchesLeftEdge={touchesLeftEdge}
@@ -220,6 +222,7 @@ function SplitNode({
           worktreeId={worktreeId}
           focusedGroupId={focusedGroupId}
           isWorktreeActive={isWorktreeActive}
+          isWorktreeFocused={isWorktreeFocused}
           hasSplitGroups={hasSplitGroups}
           touchesTopEdge={touchesTopEdge}
           touchesRightEdge={isHorizontal ? false : touchesRightEdge}
@@ -246,6 +249,7 @@ function SplitNode({
           worktreeId={worktreeId}
           focusedGroupId={focusedGroupId}
           isWorktreeActive={isWorktreeActive}
+          isWorktreeFocused={isWorktreeFocused}
           hasSplitGroups={hasSplitGroups}
           touchesTopEdge={isHorizontal ? touchesTopEdge : false}
           touchesRightEdge={touchesRightEdge}
@@ -266,14 +270,16 @@ export default function TabGroupSplitLayout({
   layout,
   worktreeId,
   focusedGroupId,
-  isWorktreeActive
+  isWorktreeActive,
+  isWorktreeFocused = isWorktreeActive
 }: {
   layout: TabGroupLayoutNode
   worktreeId: string
   focusedGroupId?: string
   isWorktreeActive: boolean
+  isWorktreeFocused?: boolean
 }): React.JSX.Element {
-  const dragSplit = useTabDragSplit({ worktreeId, enabled: isWorktreeActive })
+  const dragSplit = useTabDragSplit({ worktreeId, enabled: isWorktreeFocused })
   const hasSplits = layout.type === 'split'
 
   return (
@@ -324,6 +330,7 @@ export default function TabGroupSplitLayout({
               worktreeId={worktreeId}
               focusedGroupId={focusedGroupId}
               isWorktreeActive={isWorktreeActive}
+              isWorktreeFocused={isWorktreeFocused}
               hasSplitGroups={hasSplits}
               touchesTopEdge={true}
               touchesRightEdge={true}

@@ -10,6 +10,7 @@ import { useReusedArrayIdentity } from './sidebar/worktree-list/listing/use-reus
 import { selectPairedRuntimeParkingEnvironmentIds } from './terminal-pane/terminal-hidden-view-parking'
 import { createTerminalWorktreeTopologyProjection } from './terminal-pane/terminal-hidden-worktree-retention'
 import { isMainTerminalSideEffectAuthorityForPty } from './terminal-pane/terminal-side-effect-facts-handler'
+import { collectWorkspaceIds, findWorkspaceSplitGroup } from '@/lib/workspace-split-layout'
 
 export function useTerminalWorkspaceFoundation() {
   const terminalTopologyProjectionRef = useRef<WorktreeTabBucketProjection<
@@ -63,6 +64,19 @@ export function useTerminalWorkspaceFoundation() {
     [workspaceSurfaceIds]
   )
   const activeView = useAppStore((state) => state.activeView)
+  const workspaceSplitGroups = useAppStore((state) => state.workspaceSplitGroups)
+  const visibleWorkspaceSplitGroup = useMemo(() => {
+    const group = findWorkspaceSplitGroup(workspaceSplitGroups, renderedActiveWorktreeId)
+    return group && collectWorkspaceIds(group.layout).every((id) => workspaceSurfaceIdSet.has(id))
+      ? group
+      : null
+  }, [workspaceSplitGroups, renderedActiveWorktreeId, workspaceSurfaceIdSet])
+  const visibleWorkspaceIds = useMemo(
+    () =>
+      (visibleWorkspaceSplitGroup && collectWorkspaceIds(visibleWorkspaceSplitGroup.layout)) ??
+      (renderedActiveWorktreeId ? [renderedActiveWorktreeId] : []),
+    [visibleWorkspaceSplitGroup, renderedActiveWorktreeId]
+  )
   // Why: terminal titles are leaf chrome. The root host only subscribes to
   // mount/parking semantics; a real transition publishes fresh tab objects,
   // while LiveTerminalTabBar reads title-only updates from the active bucket.
@@ -110,6 +124,8 @@ export function useTerminalWorkspaceFoundation() {
     renderedActiveWorktreeId,
     activeWorktreeDeferralHostId,
     activeView,
+    visibleWorkspaceSplitGroup,
+    visibleWorkspaceIds,
     tabsByWorktree,
     pendingStartupByTabId,
     terminalParkingEnabled,

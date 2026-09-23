@@ -5,13 +5,16 @@ import type { Worktree } from '../../../../../../shared/worktree/types'
 import { cloneDefaultWorkspaceStatuses } from '../../../../../../shared/workspace-statuses'
 import { useSidebarWorktreeSortOrder } from './use-sort-order'
 
-const state = vi.hoisted(() => ({
-  sortEpoch: 0,
-  worktreesByRepo: {} as Record<string, Worktree[]>,
-  tabsByWorktree: {},
-  ptyIdsByTabId: {},
-  agentStatusByPaneKey: {}
-}))
+const state = vi.hoisted(() => {
+  const worktreesByRepo: Record<string, Worktree[]> = {}
+  return {
+    sortEpoch: 0,
+    worktreesByRepo,
+    tabsByWorktree: {},
+    ptyIdsByTabId: {},
+    agentStatusByPaneKey: {}
+  }
+})
 vi.mock('@/store', () => ({
   useAppStore: Object.assign((selector: (value: typeof state) => unknown) => selector(state), {
     getState: () => state

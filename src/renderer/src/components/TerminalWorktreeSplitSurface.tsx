@@ -15,6 +15,10 @@ import { RetainedBrowserPaneOverlayLayer } from './browser-pane/assemble-chrome/
 import EmulatorPaneOverlayLayer from './emulator-pane/EmulatorPaneOverlayLayer'
 import StructuredAgentSessionPaneOverlayLayer from './native-chat/StructuredAgentSessionPaneOverlayLayer'
 import AiVaultSessionDropLayer from './tab-group/AiVaultSessionDropLayer'
+import { activateAndRevealWorkspace } from '@/lib/worktree-activation'
+import type { WorkspaceSplitEdge } from '@/lib/workspace-split-layout'
+import { useAppStore } from '@/store'
+import type { WorkspacePaneRect } from './workspace-split/WorkspaceSplitLayoutSlots'
 
 export const WorktreeSplitSurface = React.memo(function WorktreeSplitSurface({
   worktreeId,
@@ -22,6 +26,10 @@ export const WorktreeSplitSurface = React.memo(function WorktreeSplitSurface({
   layout,
   focusedGroupId,
   isVisible,
+  isFocused = isVisible,
+  paneRect,
+  isMultiPane = false,
+  hoverEdge,
   shouldMeasureHiddenWorktree,
   shouldColdParkTerminalPanes,
   isForceParked,
@@ -31,9 +39,13 @@ export const WorktreeSplitSurface = React.memo(function WorktreeSplitSurface({
 }: {
   worktreeId: string
   worktreePath: string
-  layout: TabGroupLayoutNode
+  layout: TabGroupLayoutNode | null
   focusedGroupId?: string
   isVisible: boolean
+  isFocused?: boolean
+  paneRect?: WorkspacePaneRect
+  isMultiPane?: boolean
+  hoverEdge?: WorkspaceSplitEdge | null
   shouldMeasureHiddenWorktree: boolean
   shouldColdParkTerminalPanes: boolean
   isForceParked: boolean
@@ -47,29 +59,79 @@ export const WorktreeSplitSurface = React.memo(function WorktreeSplitSurface({
     shouldMeasureHiddenWorktree,
     needsBrowserGuestPaint
   })
+  const isPaintVisible = isVisible && (!isMultiPane || paneRect !== undefined)
 
   return (
     <div
       className={
-        isVisible
+        isPaintVisible
           ? 'absolute inset-0 flex'
           : shouldKeepPaintable
             ? 'absolute inset-0 flex opacity-0 pointer-events-none'
             : 'absolute inset-0 hidden'
       }
-      inert={!isVisible}
-      aria-hidden={!isVisible}
+      style={
+        isMultiPane && paneRect
+          ? {
+              top: paneRect.top,
+              left: paneRect.left,
+              width: paneRect.width,
+              height: paneRect.height,
+              right: 'auto',
+              bottom: 'auto'
+            }
+          : undefined
+      }
+      data-workspace-surface-id={worktreeId}
+      inert={!isPaintVisible}
+      aria-hidden={!isPaintVisible}
+      onPointerDownCapture={() => {
+        if (isPaintVisible && useAppStore.getState().activeWorktreeId !== worktreeId) {
+          activateAndRevealWorkspace(worktreeId, { revealInSidebar: false })
+        }
+      }}
     >
-      <TabGroupSplitLayout
-        layout={layout}
-        worktreeId={worktreeId}
-        focusedGroupId={focusedGroupId}
-        isWorktreeActive={isVisible}
-      />
+      {hoverEdge ? (
+        <div
+          className={`pointer-events-none absolute z-50 border-2 border-primary bg-primary/15 ${
+            hoverEdge === 'left'
+              ? 'inset-y-0 left-0 w-1/2'
+              : hoverEdge === 'right'
+                ? 'inset-y-0 right-0 w-1/2'
+                : hoverEdge === 'top'
+                  ? 'inset-x-0 top-0 h-1/2'
+                  : 'inset-x-0 bottom-0 h-1/2'
+          }`}
+        />
+      ) : null}
+      {layout ? (
+        <TabGroupSplitLayout
+          layout={layout}
+          worktreeId={worktreeId}
+          focusedGroupId={focusedGroupId}
+          isWorktreeActive={isVisible}
+          isWorktreeFocused={isFocused}
+        />
+      ) : isVisible ? (
+        <div
+          className="flex flex-1 flex-col items-center justify-center gap-3 bg-background text-sm text-muted-foreground"
+          data-workspace-empty-pane={worktreeId}
+        >
+          <span>{worktreePath.split(/[\\/]/).findLast(Boolean) ?? worktreePath}</span>
+          <button
+            type="button"
+            className="rounded border border-border bg-card px-3 py-1.5 text-foreground hover:bg-accent"
+            onClick={() => useAppStore.getState().createTab(worktreeId)}
+          >
+            New terminal
+          </button>
+        </div>
+      ) : null}
       <TerminalPaneOverlayLayer
         worktreeId={worktreeId}
         worktreePath={worktreePath}
         isWorktreeActive={isVisible}
+        isWorktreeFocused={isFocused}
         coldParkTerminalPanes={shouldColdParkTerminalPanes}
         isForceParked={isForceParked}
         shouldMeasureHiddenWorktree={shouldMeasureHiddenWorktree}

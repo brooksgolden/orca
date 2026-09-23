@@ -40,6 +40,7 @@ export function applyTerminalColdActivation(controller: TerminalParkingFoundatio
     workspaceSurfaceIds,
     workspaceSurfaceIdSet
   } = controller
+  const visibleWorkspaceIds = controller.visibleWorkspaceIds
   if (
     renderedActiveWorktreeId &&
     canMountTerminalWorkspaceForStartup({
@@ -148,6 +149,11 @@ export function applyTerminalColdActivation(controller: TerminalParkingFoundatio
       })
     }
     mountedWorktreeIdsRef.current.add(renderedActiveWorktreeId)
+    // The partner has its own layout and live PTYs even before it becomes the
+    // keyboard-focused workspace. Admit it to the mount set with no cold deferral.
+    for (const id of visibleWorkspaceIds) {
+      mountedWorktreeIdsRef.current.add(id)
+    }
   } else {
     lastActivationWorktreeIdRef.current = null
   }

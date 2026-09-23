@@ -253,6 +253,7 @@ export function createRemoveWorktree(
         requiredExecutionHostId,
         terminalPtyIdsBeforeRemoval
       })
+      get().unsplitWorkspace(worktreeId)
       // Why: Source Control may be unmounted during deletion, so it can't be the only stale-draft cleanup path.
       clearSessionCommitDraftForWorktree(worktreeId)
       const preservedBranch = removalResult?.preservedBranch

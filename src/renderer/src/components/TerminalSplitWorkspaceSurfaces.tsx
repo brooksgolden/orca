@@ -1,6 +1,33 @@
 import { useAnyBrowserGuestNeedsPaint } from './browser-pane/host-guest/browser-guest-paint-retention'
 import { WorktreeSplitSurface } from './TerminalWorktreeSplitSurface'
 import type { TerminalController } from './use-terminal-controller'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useAppStore } from '@/store'
+import {
+  collectWorkspaceIds,
+  findWorkspaceSplitGroup,
+  MAX_WORKSPACE_PANES,
+  type WorkspaceSplitEdge
+} from '@/lib/workspace-split-layout'
+import { readWorkspaceDragData, WORKSPACE_STATUS_DRAG_TYPE } from './sidebar/workspace-status'
+import { activateAndRevealWorkspace } from '@/lib/worktree-activation'
+import { toast } from 'sonner'
+import {
+  WorkspaceSplitLayoutSlots,
+  type WorkspacePaneRect
+} from './workspace-split/WorkspaceSplitLayoutSlots'
+
+function nearestEdge(element: HTMLElement, x: number, y: number): WorkspaceSplitEdge {
+  const bounds = element.getBoundingClientRect()
+  const distances = [
+    { edge: 'left', value: x - bounds.left },
+    { edge: 'right', value: bounds.right - x },
+    { edge: 'top', value: y - bounds.top },
+    { edge: 'bottom', value: bounds.bottom - y }
+  ] as const
+  return distances.reduce((best, candidate) => (candidate.value < best.value ? candidate : best))
+    .edge
+}
 
 export function TerminalSplitWorkspaceSurfaces({
   controller
@@ -21,60 +48,180 @@ export function TerminalSplitWorkspaceSurfaces({
     measurableBackgroundWorktreeIdsRef,
     mountedWorktreeIdsRef,
     renderedActiveWorktreeId,
+    visibleWorkspaceSplitGroup,
     workspaceSurfaces
   } = controller
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [paneRects, setPaneRects] = useState<Map<string, WorkspacePaneRect>>(() => new Map())
+  const [hover, setHover] = useState<{ id: string; edge: WorkspaceSplitEdge } | null>(null)
+  const onRatioChange = useCallback(
+    (path: readonly ('first' | 'second')[], ratio: number) => {
+      if (visibleWorkspaceSplitGroup) {
+        useAppStore.getState().setWorkspaceSplitRatio(visibleWorkspaceSplitGroup.id, path, ratio)
+      }
+    },
+    [visibleWorkspaceSplitGroup]
+  )
   // Why: this and TerminalSurface are both strict ancestors of every browser <webview>, so a
   // remote controller needs each to drop `hidden` — the per-worktree surface hatch below cannot
   // override an ancestor that stopped compositing.
   const retainBrowserGuestPaint = useAnyBrowserGuestNeedsPaint(!effectiveActiveLayout)
-  if (!anyMountedWorktreeHasLayout) {
+  const mountedSurfaces = workspaceSurfaces.filter((workspace) =>
+    mountedWorktreeIdsRef.current.has(workspace.id)
+  )
+  const group =
+    activeView === 'terminal' &&
+    visibleWorkspaceSplitGroup &&
+    collectWorkspaceIds(visibleWorkspaceSplitGroup.layout).every((id) =>
+      mountedSurfaces.some((workspace) => workspace.id === id)
+    )
+      ? visibleWorkspaceSplitGroup
+      : null
+  const visibleIds =
+    activeView === 'terminal'
+      ? group
+        ? collectWorkspaceIds(group.layout)
+        : renderedActiveWorktreeId
+          ? [renderedActiveWorktreeId]
+          : []
+      : []
+  const visibleIdsKey = visibleIds.join('\u0000')
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) {
+      return
+    }
+    const ids = new Set(visibleIdsKey.split('\u0000').filter(Boolean))
+    const targetSurface = (event: DragEvent): HTMLElement | null => {
+      if (!Array.from(event.dataTransfer?.types ?? []).includes(WORKSPACE_STATUS_DRAG_TYPE)) {
+        return null
+      }
+      const element = event.target instanceof Element ? event.target : null
+      const surface = element?.closest<HTMLElement>('[data-workspace-surface-id]')
+      return surface && root.contains(surface) && ids.has(surface.dataset.workspaceSurfaceId ?? '')
+        ? surface
+        : null
+    }
+    const onDragOver = (event: DragEvent) => {
+      const surface = targetSurface(event)
+      if (!surface || !event.dataTransfer) {
+        setHover(null)
+        return
+      }
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+      const next = {
+        id: surface.dataset.workspaceSurfaceId!,
+        edge: nearestEdge(surface, event.clientX, event.clientY)
+      }
+      setHover((previous) =>
+        previous?.id === next.id && previous.edge === next.edge ? previous : next
+      )
+    }
+    const onDrop = (event: DragEvent) => {
+      const surface = targetSurface(event)
+      setHover(null)
+      if (!surface || !event.dataTransfer) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      const targetId = surface.dataset.workspaceSurfaceId!
+      const sourceId = readWorkspaceDragData(event.dataTransfer)
+      if (!sourceId || sourceId === targetId) {
+        return
+      }
+      const state = useAppStore.getState()
+      const existingGroup = findWorkspaceSplitGroup(state.workspaceSplitGroups, targetId)
+      if (
+        existingGroup &&
+        !collectWorkspaceIds(existingGroup.layout).includes(sourceId) &&
+        collectWorkspaceIds(existingGroup.layout).length >= MAX_WORKSPACE_PANES
+      ) {
+        toast.error(`A split can contain up to ${MAX_WORKSPACE_PANES} workspaces`)
+        return
+      }
+      if (activateAndRevealWorkspace(sourceId, { revealInSidebar: false }) !== false) {
+        useAppStore
+          .getState()
+          .placeWorkspaceAtEdge(
+            sourceId,
+            targetId,
+            nearestEdge(surface, event.clientX, event.clientY)
+          )
+      }
+    }
+    const onDragEnd = () => setHover(null)
+    document.addEventListener('dragover', onDragOver, true)
+    document.addEventListener('drop', onDrop, true)
+    document.addEventListener('dragend', onDragEnd, true)
+    return () => {
+      document.removeEventListener('dragover', onDragOver, true)
+      document.removeEventListener('drop', onDrop, true)
+      document.removeEventListener('dragend', onDragEnd, true)
+    }
+  }, [visibleIdsKey])
+  if (!anyMountedWorktreeHasLayout && !group) {
     return null
+  }
+  const renderSurface = (workspace: (typeof workspaceSurfaces)[number], isVisible: boolean) => {
+    const layout = getEffectiveLayoutForWorktree(workspace.id)
+    const shouldMeasureHiddenWorktree =
+      !isVisible && measurableBackgroundWorktreeIdsRef.current.has(workspace.id)
+    const shouldColdParkTerminalPanes =
+      !isVisible &&
+      !shouldMeasureHiddenWorktree &&
+      effectiveParkedTerminalWorktreeIds.has(workspace.id)
+    return (
+      <WorktreeSplitSurface
+        key={`tab-groups-${workspace.id}`}
+        worktreeId={workspace.id}
+        worktreePath={workspace.path}
+        layout={layout ?? null}
+        focusedGroupId={activeGroupIdByWorktree[workspace.id]}
+        isVisible={isVisible}
+        isFocused={isVisible && workspace.id === renderedActiveWorktreeId}
+        isMultiPane={group !== null && isVisible}
+        hoverEdge={hover?.id === workspace.id ? hover.edge : null}
+        paneRect={group && isVisible ? paneRects.get(workspace.id) : undefined}
+        shouldMeasureHiddenWorktree={shouldMeasureHiddenWorktree}
+        shouldColdParkTerminalPanes={shouldColdParkTerminalPanes}
+        isForceParked={forceParkedTerminalWorktreeIds.has(workspace.id)}
+        activityTerminalPortals={activityTerminalPortals}
+        backgroundMountTabIds={backgroundMountTabIdsByWorktreeRef.current.get(workspace.id) ?? null}
+        activationDeferredMountTabIds={
+          activationDeferredMountTabIdsByWorktreeRef.current.get(workspace.id) ?? null
+        }
+      />
+    )
   }
   return (
     <div
+      ref={rootRef}
       className={`relative flex flex-1 min-w-0 min-h-0 overflow-hidden${
-        effectiveActiveLayout
+        effectiveActiveLayout || group
           ? ''
           : retainBrowserGuestPaint
             ? ' opacity-0 pointer-events-none'
             : ' hidden'
       }`}
     >
-      {workspaceSurfaces
-        .filter((workspace) => mountedWorktreeIdsRef.current.has(workspace.id))
-        .map((workspace) => {
-          const layout = getEffectiveLayoutForWorktree(workspace.id)
-          if (!layout) {
-            return null
-          }
-          const isVisible = activeView === 'terminal' && workspace.id === renderedActiveWorktreeId
-          const shouldMeasureHiddenWorktree =
-            !isVisible && measurableBackgroundWorktreeIdsRef.current.has(workspace.id)
-          const shouldColdParkTerminalPanes =
-            !isVisible &&
-            !shouldMeasureHiddenWorktree &&
-            effectiveParkedTerminalWorktreeIds.has(workspace.id)
-          return (
-            <WorktreeSplitSurface
-              key={`tab-groups-${workspace.id}`}
-              worktreeId={workspace.id}
-              worktreePath={workspace.path}
-              layout={layout}
-              focusedGroupId={activeGroupIdByWorktree[workspace.id]}
-              isVisible={isVisible}
-              shouldMeasureHiddenWorktree={shouldMeasureHiddenWorktree}
-              shouldColdParkTerminalPanes={shouldColdParkTerminalPanes}
-              isForceParked={forceParkedTerminalWorktreeIds.has(workspace.id)}
-              activityTerminalPortals={activityTerminalPortals}
-              backgroundMountTabIds={
-                backgroundMountTabIdsByWorktreeRef.current.get(workspace.id) ?? null
-              }
-              activationDeferredMountTabIds={
-                activationDeferredMountTabIdsByWorktreeRef.current.get(workspace.id) ?? null
-              }
-            />
-          )
-        })}
+      {group ? (
+        <WorkspaceSplitLayoutSlots
+          layout={group.layout}
+          onRectsChange={setPaneRects}
+          onRatioChange={onRatioChange}
+        />
+      ) : null}
+      {mountedSurfaces.map((workspace) =>
+        renderSurface(
+          workspace,
+          activeView === 'terminal' &&
+            (group
+              ? collectWorkspaceIds(group.layout).includes(workspace.id)
+              : workspace.id === renderedActiveWorktreeId)
+        )
+      )}
     </div>
   )
 }
