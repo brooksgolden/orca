@@ -112,7 +112,9 @@ describe('scoped external automations', () => {
     expect(getActiveMultiplexer).not.toHaveBeenCalled()
     expect(runProcessMock).toHaveBeenCalledTimes(1)
     expect(runProcessMock.mock.calls[0]?.[0]).toEqual({
-      program: 'which',
+      // Why platform-derived: the local probe uses `where` on Windows and
+      // `which` elsewhere, so a hardcoded name fails the suite on Windows only.
+      program: process.platform === 'win32' ? 'where' : 'which',
       args: ['hermes'],
       timeoutMs: 5_000
     })

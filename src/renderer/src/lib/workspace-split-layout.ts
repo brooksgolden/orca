@@ -23,12 +23,17 @@ export function collectWorkspaceIds(node: WorkspaceLayoutNode): string[] {
 }
 
 export function findWorkspaceSplitGroup(
-  groups: readonly WorkspaceSplitGroup[],
+  groups: readonly WorkspaceSplitGroup[] | undefined,
   workspaceId: string | null
 ): WorkspaceSplitGroup | null {
-  return workspaceId
-    ? (groups.find((group) => collectWorkspaceIds(group.layout).includes(workspaceId)) ?? null)
-    : null
+  // Why the array guard: this runs during the workspace context menu's render,
+  // so any caller whose store has not produced the split slice yet would throw
+  // inside React and take the whole menu down with it. An absent slice means
+  // no splits, which is exactly what a null answer says.
+  if (!workspaceId || !Array.isArray(groups)) {
+    return null
+  }
+  return groups.find((group) => collectWorkspaceIds(group.layout).includes(workspaceId)) ?? null
 }
 
 function removeLeaf(node: WorkspaceLayoutNode, id: string): WorkspaceLayoutNode | null {

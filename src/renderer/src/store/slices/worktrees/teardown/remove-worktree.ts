@@ -253,7 +253,9 @@ export function createRemoveWorktree(
         requiredExecutionHostId,
         terminalPtyIdsBeforeRemoval
       })
-      get().unsplitWorkspace(worktreeId)
+      // Optional call: deleting a workspace must still finish on any store
+      // composition that does not carry the workspace-split slice.
+      get().unsplitWorkspace?.(worktreeId)
       // Why: Source Control may be unmounted during deletion, so it can't be the only stale-draft cleanup path.
       clearSessionCommitDraftForWorktree(worktreeId)
       const preservedBranch = removalResult?.preservedBranch

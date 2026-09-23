@@ -13,6 +13,12 @@ import { useAppStore } from '@/store'
 import { useAllWorktrees } from '@/store/selectors'
 import { folderWorkspaceKey } from '../../../../shared/workspace-scope'
 
+// Why shared constants: the normalisers below must return a stable identity so
+// the candidate memo does not rebuild on every render when a slice is absent.
+const NO_WORKTREES: never[] = []
+const NO_FOLDERS: never[] = []
+const NO_SPLIT_GROUPS: never[] = []
+
 export function WorkspaceSplitMenuItems({
   worktreeId,
   disabled
@@ -21,14 +27,20 @@ export function WorkspaceSplitMenuItems({
   disabled: boolean
 }): React.JSX.Element | null {
   const allWorktrees = useAllWorktrees()
-  const folders = useAppStore((state) => state.folderWorkspaces)
-  const groups = useAppStore((state) => state.workspaceSplitGroups)
+  const folderWorkspaces = useAppStore((state) => state.folderWorkspaces)
+  const splitGroups = useAppStore((state) => state.workspaceSplitGroups)
   const placeWorkspaceAtEdge = useAppStore((state) => state.placeWorkspaceAtEdge)
   const unsplitWorkspace = useAppStore((state) => state.unsplitWorkspace)
+  // Why normalise: this renders inside the workspace context menu, so a store
+  // composition that has not produced one of these slices would throw during
+  // render and take the entire menu down rather than hiding one submenu.
+  const worktrees = Array.isArray(allWorktrees) ? allWorktrees : NO_WORKTREES
+  const folders = Array.isArray(folderWorkspaces) ? folderWorkspaces : NO_FOLDERS
+  const groups = Array.isArray(splitGroups) ? splitGroups : NO_SPLIT_GROUPS
   const group = findWorkspaceSplitGroup(groups, worktreeId)
   const candidates = useMemo(() => {
     const options = [
-      ...allWorktrees.map((worktree) => ({
+      ...worktrees.map((worktree) => ({
         id: worktree.id,
         name:
           worktree.displayName || worktree.path.split(/[\\/]/).findLast(Boolean) || worktree.path
@@ -47,7 +59,7 @@ export function WorkspaceSplitMenuItems({
       seen.add(option.id)
       return true
     })
-  }, [allWorktrees, folders, groups, worktreeId])
+  }, [worktrees, folders, groups, worktreeId])
 
   if (group) {
     return (
