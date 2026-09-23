@@ -8,6 +8,8 @@ import type {
 } from '../../shared/automations-types'
 import type { SshTarget } from '../../shared/ssh-types'
 import { getActiveMultiplexer } from '../ssh/ssh-target-registry'
+import { runProcess } from '../../shared/child-process/run-process'
+import { readHermesServiceJobs } from '../../relay/hermes-service-catalog'
 import { mapHermesJobs, mapOpenClawJobs } from './external-job-mappers'
 import { readHermesCronOutputRunsPage } from './hermes-cron-output'
 import { isExternalAutomationCommandOnPath } from './external-manager-local-command'
@@ -27,33 +29,46 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function readLocalHermesJobs(): Promise<unknown[]> {
-  if (!existsSync(HERMES_JOBS_FILE)) {
-    return []
-  }
-  const content = await readFile(HERMES_JOBS_FILE, 'utf-8')
-  const parsed = JSON.parse(content) as unknown
-  const jobs = Array.isArray(parsed)
-    ? parsed
-    : isRecord(parsed) && Array.isArray(parsed.jobs)
-      ? parsed.jobs
-      : []
-  return Promise.all(
-    jobs.map(async (job) => {
-      if (!isRecord(job)) {
-        return job
+  const cronJobs = existsSync(HERMES_JOBS_FILE)
+    ? await readFile(HERMES_JOBS_FILE, 'utf-8').then((content) => {
+        const parsed = JSON.parse(content) as unknown
+        return Array.isArray(parsed)
+          ? parsed
+          : isRecord(parsed) && Array.isArray(parsed.jobs)
+            ? parsed.jobs
+            : []
+      })
+    : []
+  const [jobs, services] = await Promise.all([
+    Promise.all(
+      cronJobs.map(async (job) => {
+        if (!isRecord(job)) {
+          return job
+        }
+        const jobId = typeof job.id === 'string' ? job.id : null
+        if (!jobId) {
+          return job
+        }
+        const runsPage = await readHermesCronOutputRunsPage(jobId, { page: 1, pageSize: 0 })
+        return {
+          ...job,
+          run_count: runsPage.total,
+          runs: []
+        }
+      })
+    ),
+    readHermesServiceJobs(async (command, args, options) => {
+      const result = await runProcess({ program: command, args, timeoutMs: options.timeout })
+      if (result.timedOut) {
+        throw new Error(`${command} timed out after ${options.timeout}ms.`)
       }
-      const jobId = typeof job.id === 'string' ? job.id : null
-      if (!jobId) {
-        return job
+      if (result.code !== 0) {
+        throw new Error(result.stderr.trim() || `${command} exited with code ${result.code}.`)
       }
-      const runsPage = await readHermesCronOutputRunsPage(jobId, { page: 1, pageSize: 0 })
-      return {
-        ...job,
-        run_count: runsPage.total,
-        runs: []
-      }
+      return result
     })
-  )
+  ])
+  return [...jobs, ...services]
 }
 
 async function readLocalOpenClawJobs(): Promise<unknown[]> {
