@@ -100,6 +100,57 @@ describe('ExternalAutomationProviderCatalog', () => {
     )
   })
 
+  it('discovers an existing Windows scheduled task without making it manageable', async () => {
+    await writeFile(
+      join(hermesHome, 'services.json'),
+      JSON.stringify({
+        scheduled_tasks: [
+          {
+            id: 'hermes-workspace-mirror',
+            name: 'Hermes workspace mirror',
+            task_name: 'HermesWorkspaceMirror',
+            schedule: 'Every 15 minutes',
+            workdir: 'C:\\Users\\brook\\dev\\claude'
+          }
+        ]
+      }),
+      'utf-8'
+    )
+    const runCommand = vi.fn(async (command: string) => {
+      if (command === 'schtasks.exe') {
+        return {
+          stdout:
+            '"HOST","\\\\HermesWorkspaceMirror","9/22/2026 11:47:24 PM","Ready","Interactive only","9/22/2026 11:32:25 PM","0"'
+        }
+      }
+      return undefined
+    })
+    const { ExternalAutomationProviderCatalog } =
+      await import('./external-automation-provider-catalog')
+    const catalog = new ExternalAutomationProviderCatalog(runCommand, vi.fn())
+
+    const result = await catalog.listJobs({ provider: 'hermes' })
+
+    expect(result.jobs).toEqual([
+      expect.objectContaining({
+        id: 'task:hermes-workspace-mirror',
+        name: 'Hermes workspace mirror',
+        schedule_display: 'Every 15 minutes',
+        enabled: true,
+        state: 'scheduled',
+        last_status: 'completed',
+        manageable: false,
+        continuous: false,
+        scheduled_task: 'HermesWorkspaceMirror'
+      })
+    ])
+    expect(runCommand).toHaveBeenCalledWith(
+      'schtasks.exe',
+      ['/Query', '/TN', 'HermesWorkspaceMirror', '/FO', 'CSV', '/V', '/NH'],
+      { encoding: 'utf-8', timeout: 5000 }
+    )
+  })
+
   it('projects jobs-file parse failures without hiding command availability', async () => {
     await writeFile(join(hermesHome, 'cron', 'jobs.json'), '{not-json', 'utf-8')
     const { ExternalAutomationProviderCatalog } =

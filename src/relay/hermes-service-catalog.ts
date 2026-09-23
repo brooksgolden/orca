@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { HERMES_SERVICES_FILE } from './external-automation-storage-paths'
 import type { ExternalAutomationCommandRunner } from './external-automation-command-executor'
+import { readWindowsScheduledTaskJobs } from './windows-scheduled-task-catalog'
 
 type ServiceDefinition = {
   id: string
@@ -144,29 +145,34 @@ export async function readHermesServiceJobs(
   if (!existsSync(HERMES_SERVICES_FILE)) {
     return []
   }
-  const definitions = readDefinitions(JSON.parse(await readFile(HERMES_SERVICES_FILE, 'utf-8')))
-  return Promise.all(
-    definitions.map(async (definition) => {
-      try {
-        const states = await Promise.all(
-          definition.units.map((unit) => readUnitState(unit, runCommand))
-        )
-        return serviceJob(definition, states)
-      } catch (error) {
-        return {
-          ...serviceJob(
-            definition,
-            definition.units.map((unit) => ({
-              id: unit,
-              loadState: 'unknown',
-              activeState: 'unknown',
-              subState: 'unknown',
-              activeEnterTimestamp: null
-            }))
-          ),
-          last_error: error instanceof Error ? error.message : String(error)
+  const value: unknown = JSON.parse(await readFile(HERMES_SERVICES_FILE, 'utf-8'))
+  const definitions = readDefinitions(value)
+  const [services, tasks] = await Promise.all([
+    Promise.all(
+      definitions.map(async (definition) => {
+        try {
+          const states = await Promise.all(
+            definition.units.map((unit) => readUnitState(unit, runCommand))
+          )
+          return serviceJob(definition, states)
+        } catch (error) {
+          return {
+            ...serviceJob(
+              definition,
+              definition.units.map((unit) => ({
+                id: unit,
+                loadState: 'unknown',
+                activeState: 'unknown',
+                subState: 'unknown',
+                activeEnterTimestamp: null
+              }))
+            ),
+            last_error: error instanceof Error ? error.message : String(error)
+          }
         }
-      }
-    })
-  )
+      })
+    ),
+    readWindowsScheduledTaskJobs(value, runCommand)
+  ])
+  return [...services, ...tasks]
 }
