@@ -27,7 +27,15 @@ Assert-ReviewedFiles $sourcePath
 if (-not (Test-Path -LiteralPath (Join-Path $targetPath 'Orca.exe'))) {
   throw "No installed Orca found at $targetPath."
 }
-if (-not $WhatIfPreference -and (Get-Process -Name 'Orca' -ErrorAction SilentlyContinue)) {
+$targetExecutable = Join-Path $targetPath 'Orca.exe'
+$desktopAppRunning = Get-Process -Name 'Orca' -ErrorAction SilentlyContinue | Where-Object {
+  try {
+    [string]::Equals($_.Path, $targetExecutable, [System.StringComparison]::OrdinalIgnoreCase)
+  } catch {
+    $false
+  }
+}
+if (-not $WhatIfPreference -and $desktopAppRunning) {
   throw 'Close Orca completely before installing. No files were changed.'
 }
 if (-not $PSCmdlet.ShouldProcess($targetPath, 'Back up Orca and its user data, then install the smoke-tested build')) {
