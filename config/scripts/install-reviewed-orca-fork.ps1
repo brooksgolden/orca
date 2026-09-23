@@ -2,7 +2,8 @@
 param(
   [Parameter(Mandatory)][string] $Source,
   [string] $Target = "$env:LOCALAPPDATA\Programs\orca",
-  [string] $UserData = "$env:APPDATA\orca"
+  [string] $UserData = "$env:APPDATA\orca",
+  [string] $ExistingUserDataBackup = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,8 +46,26 @@ if (-not $PSCmdlet.ShouldProcess($targetPath, 'Back up Orca and its user data, t
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $backup = "$targetPath-backup-$stamp"
 Copy-Item -LiteralPath $targetPath -Destination $backup -Recurse
-if (Test-Path -LiteralPath $UserData) {
-  Copy-Item -LiteralPath $UserData -Destination "$UserData-backup-$stamp" -Recurse
+$userDataBackup = $null
+if ($ExistingUserDataBackup) {
+  $userDataBackup = (Resolve-Path -LiteralPath $ExistingUserDataBackup).Path
+  if (-not [string]::Equals(
+    (Split-Path -Parent $userDataBackup),
+    (Split-Path -Parent $UserData),
+    [System.StringComparison]::OrdinalIgnoreCase
+  ) -or -not (Split-Path -Leaf $userDataBackup).StartsWith(
+    "$(Split-Path -Leaf $UserData)-backup-",
+    [System.StringComparison]::OrdinalIgnoreCase
+  )) {
+    throw 'Existing user data backup must be a sibling Orca backup directory.'
+  }
+} elseif (Test-Path -LiteralPath $UserData) {
+  $userDataBackup = "$UserData-backup-$stamp"
+  New-Item -ItemType Directory -Path $userDataBackup -ErrorAction Stop | Out-Null
+  & robocopy.exe $UserData $userDataBackup /E /R:0 /W:0 /XJ /XF Cookies *.sqlite-shm *.db-shm /NFL /NDL /NJH /NJS /NP | Out-Null
+  if ($LASTEXITCODE -ge 8) {
+    throw "Orca user data backup failed with robocopy exit code $LASTEXITCODE. No app files were changed."
+  }
 }
 try {
   foreach ($entry in Get-ChildItem -LiteralPath $sourcePath -Force) {
@@ -61,4 +80,4 @@ try {
   throw "Installation failed; the previous app files were restored. Backup: $backup. Error: $installError"
 }
 Write-Host "Installed reviewed commit $($manifest.commit). App backup: $backup"
-Write-Host "User data backup, if present: $UserData-backup-$stamp"
+Write-Host "User data backup, if present: $userDataBackup"
