@@ -220,7 +220,6 @@ test('packaged sidebar and cross-workspace terminals', async (// oxlint-disable-
       )
       .toEqual([`folder:${ids[0]}`, `folder:${ids[1]}`])
 
-    await page.screenshot({ path: testInfo.outputPath('sidebar-done-order.png') })
     await page.getByText('Sessions', { exact: true }).first().click()
     const cards = page.locator('[data-testid="session-grid-card"]')
     await expect(cards).toHaveCount(2)
@@ -248,7 +247,6 @@ test('packaged sidebar and cross-workspace terminals', async (// oxlint-disable-
       .map((folder) => readShellOutput(path.join(folder, 'grid-output.txt')))
     expect(outputs.some((output) => output.includes('GRID_CARD_ZERO'))).toBe(true)
     expect(outputs.some((output) => output.includes('GRID_CARD_ONE'))).toBe(true)
-    await page.screenshot({ path: testInfo.outputPath('sessions-grid.png') })
     expect(errors).toEqual([])
     expect(
       await app.evaluate(({ BrowserWindow }) =>

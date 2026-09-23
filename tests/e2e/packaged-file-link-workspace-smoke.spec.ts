@@ -1,41 +1,49 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { _electron as electron, expect, test, type Page } from '@stablyai/playwright-test'
+import { Terminal } from '@xterm/headless'
 import { getE2ECompletedOnboardingProfile } from './helpers/e2e-completed-onboarding-profile'
 import { createElectronHomeIsolation } from './helpers/electron-home-isolation'
 import { cleanupE2EDaemons, closeElectronAppForE2E } from './helpers/electron-process-shutdown'
 
-async function clickPrintedFileLink(page: Page, printedPath: string): Promise<void> {
-  const pointForPrintedPath = () =>
-    page.evaluate((needle) => {
-      const rows = [...document.querySelectorAll<HTMLElement>('.xterm-rows > div')]
-        .filter((row) => row.getBoundingClientRect().width > 0)
-        .toReversed()
-      const row = rows.find((candidate) => candidate.textContent?.includes(needle))
-      if (!row) {
-        return null
-      }
-      const midpoint = (row.textContent?.indexOf(needle) ?? -1) + Math.floor(needle.length / 2)
-      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT)
-      let offset = 0
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        const length = node.textContent?.length ?? 0
-        if (midpoint < offset + length) {
-          const range = document.createRange()
-          range.setStart(node, midpoint - offset)
-          range.setEnd(node, midpoint - offset + 1)
-          const bounds = range.getBoundingClientRect()
-          return { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 }
-        }
-        offset += length
-      }
-      return null
-    }, printedPath)
-
-  await expect.poll(pointForPrintedPath, { timeout: 15_000 }).not.toBeNull()
-  const point = await pointForPrintedPath()
-  if (!point) {
+async function clickPrintedFileLink(
+  page: Page,
+  printedPath: string,
+  sessionIndex: number
+): Promise<void> {
+  const snapshot = async () =>
+    page.evaluate(async (index) => {
+      const session = (await window.api.pty.listSessions())[index]
+      return session
+        ? window.api.pty.getMainBufferSnapshot(session.id, { scrollbackRows: 100 })
+        : null
+    }, sessionIndex)
+  await expect
+    .poll(async () => (await snapshot())?.data.split(printedPath).length ?? 0, { timeout: 20_000 })
+    .toBeGreaterThanOrEqual(3)
+  const frame = await snapshot()
+  if (!frame) {
+    throw new Error('Terminal snapshot unavailable')
+  }
+  const terminal = new Terminal({ cols: frame.cols, rows: frame.rows })
+  await new Promise<void>((resolve) => terminal.write(frame.data, resolve))
+  const buffer = terminal.buffer.active
+  const visibleCells = Array.from({ length: frame.rows }, (_, row) =>
+    (buffer.getLine(buffer.viewportY + row)?.translateToString(false) ?? '').padEnd(frame.cols)
+  ).join('')
+  terminal.dispose()
+  const start = visibleCells.lastIndexOf(printedPath)
+  if (start === -1) {
     throw new Error(`Terminal did not render ${printedPath}`)
+  }
+  const center = start + Math.floor(printedPath.length / 2)
+  const screen = await page.locator('.xterm:visible .xterm-screen').boundingBox()
+  if (!screen) {
+    throw new Error('Visible terminal screen unavailable')
+  }
+  const point = {
+    x: screen.x + ((center % frame.cols) + 0.5) * (screen.width / frame.cols),
+    y: screen.y + (Math.floor(center / frame.cols) + 0.5) * (screen.height / frame.rows)
   }
   await page.mouse.move(point.x, point.y)
   await page.waitForTimeout(250)
@@ -55,6 +63,7 @@ test('packaged file links and folder workspace splits retain their workspace', a
   const folders = ['a', 'b'].map((name) => path.join(userDataDir, name))
   folders.forEach((folder) => mkdirSync(folder, { recursive: true }))
   writeFileSync(path.join(folders[0], 'linked.md'), '# File link smoke\n')
+  writeFileSync(path.join(folders[1], 'linked.md'), '# Second file link smoke\n')
   writeFileSync(
     path.join(userDataDir, 'orca-data.json'),
     JSON.stringify(getE2ECompletedOnboardingProfile())
@@ -100,21 +109,31 @@ test('packaged file links and folder workspace splits retain their workspace', a
 
     await row(ids[0]).locator('[data-worktree-card-surface]').click()
     await expect(row(ids[0])).toHaveAttribute('aria-current', 'page')
-    await page.keyboard.press('Enter')
+    await expect
+      .poll(() => page.evaluate(async () => (await window.api.pty.listSessions()).length), {
+        timeout: 30_000
+      })
+      .toBe(1)
+    await page.locator('.xterm:visible .xterm-helper-textarea').click()
     await expect(page.locator('.xterm:visible .xterm-helper-textarea')).toBeFocused()
     await page.keyboard.type('echo ./linked.md')
     await page.keyboard.press('Enter')
-    await clickPrintedFileLink(page, './linked.md')
+    await clickPrintedFileLink(page, './linked.md', 0)
     await expect(page.locator('.editor-header-path').first()).toContainText('linked.md')
     await expect(row(ids[0])).toHaveAttribute('aria-current', 'page')
 
     await row(ids[1]).locator('[data-worktree-card-surface]').click()
     await expect(row(ids[1])).toHaveAttribute('aria-current', 'page')
-    await page.keyboard.press('Enter')
+    await expect
+      .poll(() => page.evaluate(async () => (await window.api.pty.listSessions()).length), {
+        timeout: 30_000
+      })
+      .toBe(2)
+    await page.locator('.xterm:visible .xterm-helper-textarea').click()
     await expect(page.locator('.xterm:visible .xterm-helper-textarea')).toBeFocused()
-    await page.keyboard.type('echo ../a/linked.md')
+    await page.keyboard.type('echo ./linked.md')
     await page.keyboard.press('Enter')
-    await clickPrintedFileLink(page, '../a/linked.md')
+    await clickPrintedFileLink(page, './linked.md', 1)
     await expect(page.locator('.editor-header-path').first()).toContainText('linked.md')
     await expect(row(ids[1])).toHaveAttribute('aria-current', 'page')
     await page.screenshot({ path: testInfo.outputPath('file-in-current-workspace.png') })
